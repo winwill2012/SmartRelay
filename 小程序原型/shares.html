@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>分享管理 — SmartRelay</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/prototype-base.css" />
+</head>
+<body class="bg-slate-200">
+  <div class="mp-shell">
+    <div class="mp-status">
+      <span>9:41</span>
+      <span class="flex gap-1">📶 🔋</span>
+    </div>
+    <div class="mp-nav">
+      <a href="mine.html" class="mp-nav-back">返回</a>
+      <span class="mp-nav-title">分享管理</span>
+    </div>
+
+    <main class="px-4 pb-8">
+      <p class="text-xs text-slate-500 mt-3 mb-4">通过微信分享给其他用户后，对方可在其账号内控制已授权设备</p>
+
+      <ul class="space-y-3">
+        <li class="rounded-2xl bg-white border border-slate-100 p-4 shadow-sm flex justify-between items-center gap-3">
+          <div class="min-w-0">
+            <p class="font-medium text-slate-900 truncate">客厅灯带</p>
+            <p class="text-xs text-slate-500 mt-1">分享给 · 张三 · 可控制</p>
+          </div>
+          <button type="button" class="text-sm text-red-600 shrink-0">撤销</button>
+        </li>
+        <li class="rounded-2xl bg-white border border-slate-100 p-4 shadow-sm flex justify-between items-center gap-3">
+          <div class="min-w-0">
+            <p class="font-medium text-slate-900 truncate">备用插座</p>
+            <p class="text-xs text-slate-500 mt-1">待接受 · 李四</p>
+          </div>
+          <button type="button" class="text-sm text-primary shrink-0">提醒</button>
+        </li>
+      </ul>
+
+      <p class="text-center text-xs text-slate-400 mt-8">实际分享流程以微信会话插件 / 小程序卡片为准</p>
+    </main>
+  </div>
+</body>
+</html>

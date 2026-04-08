@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>我的 — SmartRelay</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: "#2563eb" }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="css/prototype-base.css" />
+</head>
+<body class="bg-slate-200">
+  <div class="mp-shell">
+    <div class="mp-status">
+      <span>9:41</span>
+      <span class="flex gap-1">📶 🔋</span>
+    </div>
+    <div class="mp-nav">
+      <a href="index.html" class="mp-nav-back text-xs text-slate-400">导航</a>
+      <span class="mp-nav-title">我的</span>
+    </div>
+
+    <main class="mp-content-pad">
+      <section class="mx-4 mt-4 rounded-2xl bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 p-5 shadow-md border border-blue-100/80">
+        <!-- 未登录：头像位改为登录按钮 -->
+        <div id="mine-guest-top" class="hidden flex flex-col items-center text-center">
+          <a href="login.html" id="mine-btn-login" class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#2563eb] text-sm font-semibold text-white shadow-md shadow-blue-600/30 ring-2 ring-white active:brightness-95">
+            登录
+          </a>
+          <p class="mt-3 text-xs text-slate-500">登录后同步设备与账号信息</p>
+        </div>
+
+        <!-- 已登录：头像与昵称 -->
+        <div id="mine-user-top" class="hidden flex flex-col items-center text-center">
+          <div class="h-16 w-16 rounded-full bg-white flex items-center justify-center text-3xl shadow-sm ring-2 ring-blue-100">👤</div>
+          <p class="font-semibold text-lg text-slate-800 mt-3">微信用户</p>
+        </div>
+
+        <div class="mt-6 grid grid-cols-2 gap-3">
+          <div class="rounded-xl bg-white/95 px-3 py-4 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
+            <p class="text-xs font-medium text-slate-500">已绑定设备</p>
+            <p id="mine-stat-devices" class="text-2xl font-bold mt-1.5 tabular-nums text-primary">0</p>
+          </div>
+          <div class="rounded-xl bg-white/95 px-3 py-4 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
+            <p class="text-xs font-medium text-slate-500">定时任务</p>
+            <p id="mine-stat-timers" class="text-2xl font-bold mt-1.5 tabular-nums text-slate-900">
+              0<span class="text-sm font-medium text-slate-400"> / 10</span>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="mx-4 mt-4 rounded-2xl bg-white overflow-hidden border border-slate-100 shadow-sm">
+        <a href="notifications.html" class="flex items-center justify-between px-4 py-4 border-b border-slate-50 active:bg-slate-50">
+          <span class="flex items-center gap-3 text-slate-800">
+            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600">🔔</span>
+            通知中心
+          </span>
+          <span class="flex items-center gap-1 text-slate-400 text-sm">
+            <span id="mine-notify-badge" class="rounded-full bg-red-500 text-white text-[10px] px-1.5 py-0.5">0</span>
+            ›
+          </span>
+        </a>
+        <a href="shares.html" class="flex items-center justify-between px-4 py-4 active:bg-slate-50">
+          <span class="flex items-center gap-3 text-slate-800">
+            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50 text-violet-600">🔗</span>
+            分享管理
+          </span>
+          <span class="text-slate-400">›</span>
+        </a>
+      </section>
+
+      <div id="mine-logout-wrap" class="mx-4 mt-6 hidden">
+        <button type="button" id="mine-btn-logout" class="w-full rounded-xl border border-slate-200 bg-white py-3.5 text-sm font-medium text-red-600 active:bg-red-50">
+          退出登录
+        </button>
+      </div>
+    </main>
+
+    <nav class="mp-tabbar" aria-label="主导航">
+      <a href="devices.html" class="mp-tab">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+        <span>首页</span>
+      </a>
+      <a href="mine.html" class="mp-tab active">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <span>我的</span>
+      </a>
+    </nav>
+  </div>
+  <script>
+    (function () {
+      var KEY = "sr_proto_logged_in";
+      var guestTop = document.getElementById("mine-guest-top");
+      var userTop = document.getElementById("mine-user-top");
+      var statDev = document.getElementById("mine-stat-devices");
+      var statTimers = document.getElementById("mine-stat-timers");
+      var badge = document.getElementById("mine-notify-badge");
+      var logoutWrap = document.getElementById("mine-logout-wrap");
+
+      function apply() {
+        var loggedIn = sessionStorage.getItem(KEY) === "1";
+        if (loggedIn) {
+          guestTop.classList.add("hidden");
+          userTop.classList.remove("hidden");
+          logoutWrap.classList.remove("hidden");
+          statDev.textContent = "3";
+          statDev.className = "text-2xl font-bold mt-1.5 tabular-nums text-primary";
+          statTimers.innerHTML = '7<span class="text-sm font-medium text-slate-400"> / 10</span>';
+          badge.textContent = "2";
+          badge.classList.remove("bg-slate-200", "text-slate-600");
+          badge.classList.add("bg-red-500", "text-white");
+        } else {
+          guestTop.classList.remove("hidden");
+          userTop.classList.add("hidden");
+          logoutWrap.classList.add("hidden");
+          statDev.textContent = "0";
+          statDev.className = "text-2xl font-bold mt-1.5 tabular-nums text-slate-400";
+          statTimers.innerHTML = '0<span class="text-sm font-medium text-slate-400"> / 10</span>';
+          badge.textContent = "0";
+          badge.classList.remove("bg-red-500", "text-white");
+          badge.classList.add("bg-slate-200", "text-slate-600");
+        }
+      }
+
+      apply();
+
+      document.getElementById("mine-btn-logout").addEventListener("click", function () {
+        sessionStorage.removeItem(KEY);
+        apply();
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,1 +1,0 @@
-# SmartRelay FastAPI application

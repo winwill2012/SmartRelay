@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>通知中心 — SmartRelay</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/prototype-base.css" />
+</head>
+<body class="bg-slate-200">
+  <div class="mp-shell">
+    <div class="mp-status">
+      <span>9:41</span>
+      <span class="flex gap-1">📶 🔋</span>
+    </div>
+    <div class="mp-nav">
+      <a href="mine.html" class="mp-nav-back">返回</a>
+      <span class="mp-nav-title">通知中心</span>
+    </div>
+
+    <main class="px-4 pb-8">
+      <p class="text-xs text-slate-500 mt-3 mb-4">以定时执行结果为主 · 可扩展设备告警</p>
+
+      <ul class="space-y-3">
+        <li class="rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
+          <div class="flex justify-between items-start gap-2">
+            <div>
+              <p class="font-medium text-slate-900">定时已执行</p>
+              <p class="text-sm text-slate-600 mt-1">客厅灯带 · 「每晚关灯」22:00 关闭 · 成功</p>
+            </div>
+            <time class="text-[11px] text-slate-400 shrink-0">昨天</time>
+          </div>
+        </li>
+        <li class="rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
+          <div class="flex justify-between items-start gap-2">
+            <div>
+              <p class="font-medium text-slate-900">定时失败</p>
+              <p class="text-sm text-slate-600 mt-1">车库门 · 离线未响应 · 将重试</p>
+            </div>
+            <time class="text-[11px] text-slate-400 shrink-0">04-07</time>
+          </div>
+        </li>
+      </ul>
+    </main>
+  </div>
+</body>
+</html>

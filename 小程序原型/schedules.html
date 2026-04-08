@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>定时任务 — SmartRelay</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/prototype-base.css" />
+</head>
+<body class="bg-slate-200">
+  <div class="mp-shell">
+    <div class="mp-status">
+      <span>9:41</span>
+      <span class="flex gap-1">📶 🔋</span>
+    </div>
+    <div class="mp-nav">
+      <a href="device-detail.html" class="mp-nav-back">返回</a>
+      <span class="mp-nav-title">定时任务</span>
+    </div>
+
+    <main class="px-4 pb-24">
+      <p class="text-xs text-slate-500 mt-3">当前设备 · 客厅灯带 · 已用 7 / 10 条</p>
+
+      <ul class="mt-4 space-y-3">
+        <li class="rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <p class="font-medium text-slate-900">每晚关灯</p>
+              <p class="text-sm text-slate-600 mt-1">每天 22:00 · 关闭</p>
+            </div>
+            <button type="button" data-demo-switch aria-pressed="true" class="demo-switch-track shrink-0" aria-label="启用该定时">
+              <span class="demo-knob"></span>
+            </button>
+          </div>
+        </li>
+        <li class="rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <p class="font-medium text-slate-900">工作日晨起</p>
+              <p class="text-sm text-slate-600 mt-1">周一至周五 07:30 · 打开</p>
+            </div>
+            <button type="button" data-demo-switch aria-pressed="false" class="demo-switch-track shrink-0" aria-label="启用该定时">
+              <span class="demo-knob"></span>
+            </button>
+          </div>
+        </li>
+      </ul>
+    </main>
+
+    <a href="timer-form.html" class="fixed bottom-[max(16px,calc(50%-390px/2+16px))] right-[max(16px,calc(50%-390px/2+16px))] z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#2563eb] text-white shadow-lg shadow-blue-600/40 ring-2 ring-white active:scale-95 active:brightness-95 transition" aria-label="新建定时">
+      <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+    </a>
+  </div>
+  <script src="js/prototype-nav.js"></script>
+</body>
+</html>

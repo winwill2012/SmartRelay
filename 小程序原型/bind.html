@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>绑定设备 — SmartRelay</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: "#2563eb" }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="css/prototype-base.css" />
+</head>
+<body class="bg-slate-200">
+  <div class="mp-shell">
+    <div class="mp-status">
+      <span>9:41</span>
+      <span class="flex gap-1">📶 🔋</span>
+    </div>
+    <div class="mp-nav">
+      <a href="provision.html" class="mp-nav-back">返回</a>
+      <span class="mp-nav-title">绑定设备</span>
+    </div>
+
+    <main class="px-4 pb-8">
+      <nav class="mt-4 rounded-2xl bg-white border border-slate-100 px-3 py-4 shadow-sm" aria-label="添加设备步骤">
+        <ol class="flex items-center justify-between gap-1 text-[11px]">
+          <li class="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold text-white ring-2 ring-emerald-100">✓</span>
+            <span class="font-medium text-emerald-700">发现</span>
+          </li>
+          <li class="flex h-0.5 min-w-[12px] flex-1 self-start bg-emerald-300" style="margin-top: 15px" aria-hidden="true"></li>
+          <li class="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold text-white ring-2 ring-emerald-100">✓</span>
+            <span class="font-medium text-emerald-700">配网</span>
+          </li>
+          <li class="flex h-0.5 min-w-[12px] flex-1 self-start bg-slate-200" style="margin-top: 15px" aria-hidden="true"></li>
+          <li class="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2563eb] text-sm font-bold text-white ring-2 ring-blue-100">3</span>
+            <span class="font-medium text-[#2563eb]">绑定</span>
+          </li>
+        </ol>
+      </nav>
+
+      <div class="mt-6 flex flex-col items-center">
+        <div class="h-20 w-20 rounded-2xl bg-emerald-100 flex items-center justify-center text-4xl">✓</div>
+        <p class="mt-4 font-semibold text-slate-900">配网成功</p>
+        <p class="text-sm text-slate-500 mt-1">设备已联网，请确认绑定到当前账号</p>
+      </div>
+
+      <section class="mt-8 rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
+        <dl class="space-y-3 text-sm">
+          <div class="flex justify-between gap-4">
+            <dt class="text-slate-500">设备 ID</dt>
+            <dd class="text-slate-900 font-mono text-right">SR-A1B2C3D</dd>
+          </div>
+          <div class="flex justify-between gap-4">
+            <dt class="text-slate-500">固件</dt>
+            <dd class="text-slate-900">v1.0.0</dd>
+          </div>
+        </dl>
+      </section>
+
+      <label class="block mt-6">
+        <span class="text-xs font-medium text-slate-600">备注名</span>
+        <input type="text" placeholder="例如：客厅灯带" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" value="新设备" />
+      </label>
+
+      <a href="devices.html" class="mt-8 flex w-full items-center justify-center rounded-xl bg-[#2563eb] py-3.5 text-sm font-semibold text-white shadow-md shadow-blue-600/25 ring-1 ring-blue-700/15 active:brightness-95">
+        完成绑定
+      </a>
+    </main>
+  </div>
+</body>
+</html>

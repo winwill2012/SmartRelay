@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>添加设备 — SmartRelay</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: "#2563eb" }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="css/prototype-base.css" />
+</head>
+<body class="bg-slate-200">
+  <div class="mp-shell relative">
+    <div class="mp-status">
+      <span>9:41</span>
+      <span class="flex gap-1">📶 🔋</span>
+    </div>
+    <div class="mp-nav">
+      <a href="devices.html" class="mp-nav-back">返回</a>
+      <span class="mp-nav-title">添加设备</span>
+    </div>
+
+    <main class="px-4 pb-8">
+      <nav class="mt-4 rounded-2xl bg-white border border-slate-100 px-3 py-4 shadow-sm" aria-label="添加设备步骤">
+        <ol class="flex items-center justify-between gap-1 text-[11px]">
+          <li id="st-1" class="flex min-w-0 flex-1 flex-col items-center gap-1.5" data-state="active">
+            <span class="step-bubble flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2563eb] text-sm font-bold text-white ring-2 ring-blue-100">1</span>
+            <span class="step-text font-medium text-[#2563eb]">发现</span>
+          </li>
+          <li class="flex h-0.5 min-w-[12px] flex-1 self-start bg-slate-200" style="margin-top: 15px" aria-hidden="true"></li>
+          <li id="st-2" class="flex min-w-0 flex-1 flex-col items-center gap-1.5" data-state="pending">
+            <span class="step-bubble flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-bold text-slate-600">2</span>
+            <span class="step-text font-medium text-slate-500">配网</span>
+          </li>
+          <li class="flex h-0.5 min-w-[12px] flex-1 self-start bg-slate-200" style="margin-top: 15px" aria-hidden="true"></li>
+          <li id="st-3" class="flex min-w-0 flex-1 flex-col items-center gap-1.5" data-state="pending">
+            <span class="step-bubble flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-bold text-slate-600">3</span>
+            <span class="step-text font-medium text-slate-500">绑定</span>
+          </li>
+        </ol>
+      </nav>
+
+      <div class="rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3 mt-4">
+        <p class="text-sm text-blue-950 leading-relaxed">请确保手机打开蓝牙功能，并且设备处于配网模式（长按BOOT按键5秒进入配网模式，蓝灯持续闪烁即可）</p>
+      </div>
+
+      <section class="mt-6" id="scan-section">
+        <div id="scan-start-panel">
+          <button type="button" id="btn-scan" class="w-full flex flex-col items-center justify-center gap-1 rounded-xl bg-[#2563eb] px-4 py-4 text-sm font-semibold text-white shadow-md shadow-blue-600/25 ring-1 ring-blue-700/15 active:brightness-95">
+            <span class="flex items-center gap-2">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              搜索设备
+            </span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- WiFi 表单：搜索并自动连接成功后弹出 -->
+    <div id="wifi-modal" class="fixed inset-0 z-[100] hidden" aria-modal="true" role="dialog" aria-labelledby="wifi-modal-title">
+      <button type="button" id="wifi-modal-backdrop" class="absolute inset-0 bg-slate-900/50 backdrop-blur-[1px]" aria-label="关闭"></button>
+      <div class="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-[390px] rounded-t-2xl bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 shadow-2xl ring-1 ring-slate-200/80">
+        <div class="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200"></div>
+        <h2 id="wifi-modal-title" class="text-base font-semibold text-slate-900 mb-4">填写 WiFi 信息</h2>
+
+        <label class="block text-xs font-medium text-slate-600 mb-1">Wi-Fi 网络</label>
+        <select id="wifi-ssid-select" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
+          <option value="" disabled selected>请选择设备需要连接的网络（仅支持2.4G）</option>
+          <option value="Home_5G">Home_5G</option>
+          <option value="Home_2.4G">Home_2.4G</option>
+          <option value="Office_AP">Office_AP</option>
+          <option value="Neighbor_5G">Neighbor_5G</option>
+        </select>
+        <label class="block text-xs font-medium text-slate-600 mt-4 mb-1" for="wifi-password-input">密码</label>
+        <div class="relative">
+          <input id="wifi-password-input" type="password" autocomplete="off" placeholder="输入 WiFi 密码" class="w-full rounded-xl border border-slate-200 bg-white py-3 pl-4 pr-12 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          <button type="button" id="wifi-password-toggle" class="absolute right-0 top-0 flex h-full w-11 items-center justify-center text-slate-500 active:bg-slate-50 rounded-r-xl" aria-label="显示密码" title="显示/隐藏密码">
+            <span class="pwd-icon-show">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            </span>
+            <span class="pwd-icon-hide hidden">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+            </span>
+          </button>
+        </div>
+
+        <a href="bind.html" class="mt-6 mb-3 flex w-full items-center justify-center rounded-xl bg-[#2563eb] py-3.5 text-sm font-semibold text-white shadow-md shadow-blue-600/25 ring-1 ring-blue-700/15 active:brightness-95">
+          开始配网并绑定
+        </a>
+        <button type="button" id="wifi-modal-close" class="w-full py-2 text-sm font-medium text-slate-500">关闭</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var btnScan = document.getElementById("btn-scan");
+      var scanPanel = document.getElementById("scan-start-panel");
+      var modal = document.getElementById("wifi-modal");
+      var backdrop = document.getElementById("wifi-modal-backdrop");
+      var btnClose = document.getElementById("wifi-modal-close");
+      var st1 = document.getElementById("st-1");
+      var st2 = document.getElementById("st-2");
+      var st3 = document.getElementById("st-3");
+
+      function setStep(li, state, num) {
+        var bubble = li.querySelector(".step-bubble");
+        var title = li.querySelector(".step-text");
+        bubble.className =
+          "step-bubble flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold";
+        title.className = "step-text font-medium";
+        if (state === "active") {
+          bubble.classList.add("bg-[#2563eb]", "text-white", "ring-2", "ring-blue-100");
+          bubble.textContent = String(num);
+          title.classList.add("text-[#2563eb]");
+        } else if (state === "done") {
+          bubble.classList.add("bg-emerald-500", "text-white", "ring-2", "ring-emerald-100");
+          bubble.textContent = "✓";
+          title.classList.add("text-emerald-700");
+        } else {
+          bubble.classList.add("bg-slate-200", "text-slate-600");
+          bubble.textContent = String(num);
+          title.classList.add("text-slate-500");
+        }
+      }
+
+      function openWifiModal() {
+        modal.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+        st1.setAttribute("data-state", "done");
+        st2.setAttribute("data-state", "active");
+        st3.setAttribute("data-state", "pending");
+        setStep(st1, "done", 1);
+        setStep(st2, "active", 2);
+        setStep(st3, "pending", 3);
+      }
+
+      function closeWifiModal() {
+        modal.classList.add("hidden");
+        document.body.style.overflow = "";
+        scanPanel.classList.remove("hidden");
+        btnScan.disabled = false;
+        var span = btnScan.querySelector("span");
+        if (span) {
+          span.innerHTML =
+            '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg> 搜索设备';
+        }
+        st1.setAttribute("data-state", "active");
+        st2.setAttribute("data-state", "pending");
+        st3.setAttribute("data-state", "pending");
+        setStep(st1, "active", 1);
+        setStep(st2, "pending", 2);
+        setStep(st3, "pending", 3);
+      }
+
+      function runScan() {
+        btnScan.disabled = true;
+        var labelEl = btnScan.querySelector("span");
+        var orig =
+          '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg> 搜索设备';
+
+        if (labelEl) {
+          labelEl.innerHTML =
+            '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span> 正在搜索…';
+        }
+
+        window.setTimeout(function () {
+          if (labelEl) {
+            labelEl.innerHTML =
+              '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span> 正在连接设备…';
+          }
+        }, 1200);
+
+        window.setTimeout(function () {
+          btnScan.disabled = false;
+          if (labelEl) labelEl.innerHTML = orig;
+          scanPanel.classList.add("hidden");
+          openWifiModal();
+        }, 2200);
+      }
+
+      btnScan.addEventListener("click", runScan);
+      backdrop.addEventListener("click", closeWifiModal);
+      btnClose.addEventListener("click", closeWifiModal);
+    })();
+  </script>
+  <script>
+    (function () {
+      var input = document.getElementById("wifi-password-input");
+      var btn = document.getElementById("wifi-password-toggle");
+      var iconShow = btn && btn.querySelector(".pwd-icon-show");
+      var iconHide = btn && btn.querySelector(".pwd-icon-hide");
+      if (!input || !btn) return;
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        var show = input.type === "password";
+        input.type = show ? "text" : "password";
+        btn.setAttribute("aria-label", show ? "隐藏密码" : "显示密码");
+        if (iconShow && iconHide) {
+          iconShow.classList.toggle("hidden", show);
+          iconHide.classList.toggle("hidden", !show);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

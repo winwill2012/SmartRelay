@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>SmartRelay — 功能导航</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: "#2563eb", mpbg: "#f5f7fa" }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="css/prototype-base.css" />
+</head>
+<body class="bg-slate-200 min-h-screen py-8 px-4">
+  <div class="max-w-lg mx-auto">
+    <header class="mb-8">
+      <p class="text-xs uppercase tracking-wider text-slate-500 font-medium">SmartRelay · ESP32-C3</p>
+      <h1 class="text-2xl font-bold text-slate-900 mt-1">SmartRelay 小程序</h1>
+      <p class="text-slate-600 text-sm mt-2">远程控制继电器 · 设备与账号相关页面入口</p>
+    </header>
+
+    <section class="space-y-3">
+      <h2 class="text-sm font-semibold text-slate-500 px-1">主导航（Tab）</h2>
+      <div class="grid gap-2">
+        <a href="devices.html" class="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm border border-slate-100 hover:border-primary/30 transition">
+          <span class="font-medium text-slate-800">设备列表</span>
+          <span class="text-xs text-slate-400">快捷开关 · 在线 · 下一定时</span>
+        </a>
+        <a href="mine.html" class="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm border border-slate-100 hover:border-primary/30 transition">
+          <span class="font-medium text-slate-800">我的</span>
+          <span class="text-xs text-slate-400">统计 · 通知 · 分享 · 退出</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="mt-8 space-y-3">
+      <h2 class="text-sm font-semibold text-slate-500 px-1">账号与设备流程</h2>
+      <div class="grid gap-2">
+        <a href="login.html" class="block rounded-xl bg-white px-4 py-3 shadow-sm border border-slate-100 hover:border-primary/30">
+          <span class="font-medium text-slate-800">登录</span>
+          <span class="block text-xs text-slate-500 mt-0.5">微信授权登录</span>
+        </a>
+        <a href="provision.html" class="block rounded-xl bg-white px-4 py-3 shadow-sm border border-slate-100 hover:border-primary/30">
+          <span class="font-medium text-slate-800">发现设备 / 蓝牙配网</span>
+          <span class="block text-xs text-slate-500 mt-0.5">BLE + WiFi</span>
+        </a>
+        <a href="bind.html" class="block rounded-xl bg-white px-4 py-3 shadow-sm border border-slate-100 hover:border-primary/30">
+          <span class="font-medium text-slate-800">绑定设备</span>
+        </a>
+        <a href="device-detail.html" class="block rounded-xl bg-white px-4 py-3 shadow-sm border border-slate-100 hover:border-primary/30">
+          <span class="font-medium text-slate-800">设备详情</span>
+          <span class="block text-xs text-slate-500 mt-0.5">远程开关 · 改名 · 解绑 · 分享入口</span>
+        </a>
+        <a href="device-rename.html" class="block rounded-xl bg-white px-4 py-3 shadow-sm border border-slate-100 hover:border-primary/30">
+          <span class="font-medium text-slate-800">修改备注名</span>
+        </a>
+        <a href="firmware.html" class="block rounded-xl bg-white px-4 py-3 shadow-sm border border-slate-100 hover:border-primary/30">
+          <span class="font-medium text-slate-800">固件更新</span>
+          <span class="block text-xs text-slate-500 mt-0.5">查询服务器最新版本</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="mt-8 space-y-3">
+      <h2 class="text-sm font-semibold text-slate-500 px-1">定时 · 日志 · 通知 · 分享</h2>
+      <div class="grid gap-2">
+        <a href="schedules.html" class="block rounded-xl bg-white px-4 py-3 shadow-sm border border-slate-100 hover:border-primary/30">
+          <span class="font-medium text-slate-800">定时任务（最多 10 条）</span>
+        </a>
+        <a href="timer-form.html" class="block rounded-xl bg-white px-4 py-3 shadow-sm border border-slate-100 hover:border-primary/30">
+          <span class="font-medium text-slate-800">新建 / 编辑定时</span>
+        </a>
+        <a href="logs.html" class="block rounded-xl bg-white px-4 py-3 shadow-sm border border-slate-100 hover:border-primary/30">
+          <span class="font-medium text-slate-800">设备操作日志</span>
+        </a>
+        <a href="notifications.html" class="block rounded-xl bg-white px-4 py-3 shadow-sm border border-slate-100 hover:border-primary/30">
+          <span class="font-medium text-slate-800">通知中心</span>
+          <span class="block text-xs text-slate-500 mt-0.5">定时执行结果等</span>
+        </a>
+        <a href="shares.html" class="block rounded-xl bg-white px-4 py-3 shadow-sm border border-slate-100 hover:border-primary/30">
+          <span class="font-medium text-slate-800">分享管理</span>
+        </a>
+      </div>
+    </section>
+
+  </div>
+</body>
+</html>

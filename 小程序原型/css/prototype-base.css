@@ -1,0 +1,138 @@
+/* 小程序页面：安全区与容器 */
+:root {
+  --mp-bg: #f5f7fa;
+  --mp-nav: #ffffff;
+  --mp-primary: #2563eb;
+  --mp-text: #111827;
+  --mp-muted: #8a8f99;
+}
+
+.mp-shell {
+  max-width: 390px;
+  margin-left: auto;
+  margin-right: auto;
+  min-height: 100vh;
+  background: var(--mp-bg);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 12px 40px rgba(0, 0, 0, 0.08);
+}
+
+.mp-status {
+  height: 44px;
+  padding: 10px 16px 0;
+  font-size: 12px;
+  color: #111;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  background: var(--mp-nav);
+}
+
+.mp-nav {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: var(--mp-nav);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.mp-nav-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--mp-text);
+}
+
+.mp-nav-back {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--mp-primary);
+  font-size: 15px;
+}
+
+.mp-tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 390px;
+  height: 56px;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  background: #fff;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  z-index: 40;
+}
+
+.mp-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 10px;
+  color: var(--mp-muted);
+}
+
+.mp-tab.active {
+  color: var(--mp-primary);
+}
+
+.mp-content-pad {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 12px));
+}
+
+/*
+ * 开关滑块：用 translateX 精确对齐轨道（避免 Tailwind translate-x-4 仅 16px 导致「开启」时圆点停在中间）
+ * 小：72×32，圆 24×24，左右各 4px → 开：translateX(40px)
+ * 大：112×64（同 w-28 h-16），圆 48×48，左右各 8px → 开：translateX(48px)
+ */
+.demo-switch-track {
+  position: relative;
+  width: 72px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+.demo-switch-track[aria-pressed="true"] {
+  background-color: #10b981;
+}
+.demo-switch-track[aria-pressed="false"] {
+  background-color: #cbd5e1;
+}
+.demo-switch-track .demo-knob {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease;
+  transform: translateX(0);
+}
+.demo-switch-track[aria-pressed="true"] .demo-knob {
+  transform: translateX(40px);
+}
+
+.demo-switch-track.demo-switch-wide {
+  width: 112px;
+  height: 64px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+.demo-switch-wide .demo-knob {
+  top: 8px;
+  left: 8px;
+  width: 48px;
+  height: 48px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+.demo-switch-wide[aria-pressed="true"] .demo-knob {
+  transform: translateX(48px);
+}

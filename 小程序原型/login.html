@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>登录 — SmartRelay</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: "#2563eb" }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="css/prototype-base.css" />
+</head>
+<body class="bg-slate-200">
+  <div class="mp-shell">
+    <div class="mp-status">
+      <span>9:41</span>
+      <span class="flex gap-1">📶 🔋</span>
+    </div>
+    <div class="mp-nav">
+      <a href="devices.html" class="mp-nav-back">返回</a>
+      <span class="mp-nav-title">登录</span>
+    </div>
+
+    <main class="px-6 pt-12 pb-10">
+      <div class="text-center mb-10">
+        <div class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-[#2563eb] text-white text-2xl font-bold shadow-lg shadow-blue-500/25">SR</div>
+        <h1 class="mt-6 text-xl font-semibold text-slate-900">微联智能</h1>
+      </div>
+
+      <a id="btn-wx-login" href="devices.html" class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-medium py-3.5 shadow-md active:opacity-90">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+        微信一键登录
+      </a>
+      <p class="text-center text-xs text-slate-400 mt-6 leading-relaxed">
+        登录即表示同意
+        <a href="#" class="text-primary">《用户协议》</a>
+        与
+        <a href="#" class="text-primary">《隐私政策》</a>
+      </p>
+    </main>
+  </div>
+  <script>
+    document.getElementById("btn-wx-login").addEventListener("click", function () {
+      sessionStorage.setItem("sr_proto_logged_in", "1");
+    });
+  </script>
+</body>
+</html>

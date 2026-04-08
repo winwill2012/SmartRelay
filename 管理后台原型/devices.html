@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>设备管理 — SmartRelay 管理后台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: { colors: { primary: "#2563eb" } } } };
+  </script>
+  <link rel="stylesheet" href="css/admin-base.css" />
+</head>
+<body class="admin-body">
+  <div id="admin-overlay" class="admin-overlay" aria-hidden="true"></div>
+
+  <div class="admin-layout">
+    <aside id="admin-sidebar" class="admin-sidebar" aria-label="侧栏导航">
+      <div class="admin-sidebar__head">
+        <a href="dashboard.html" class="admin-sidebar__brand" title="SmartRelay 控制台">
+          <span class="admin-sidebar__logo">SR</span>
+          <span class="admin-sidebar__brand-txt">
+            <strong>SmartRelay</strong>
+            <span class="admin-sidebar__brand-sub">控制台</span>
+          </span>
+        </a>
+        <button type="button" id="admin-sidebar-toggle" class="admin-sidebar__pin" aria-label="收起菜单" aria-expanded="true">
+          <svg class="admin-sidebar__pin-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+          </svg>
+        </button>
+      </div>
+      <nav class="admin-sidebar__nav">
+        <a href="dashboard.html" class="admin-sidebar__link" title="数据大屏">
+          <svg class="admin-sidebar__ico" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" /></svg>
+          <span>数据大屏</span>
+        </a>
+        <a href="users.html" class="admin-sidebar__link" title="用户管理">
+          <svg class="admin-sidebar__ico" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+          <span>用户管理</span>
+        </a>
+        <a href="devices.html" class="admin-sidebar__link is-active" title="设备管理">
+          <svg class="admin-sidebar__ico" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2-6H3m18 4h2m-2 6h2M7 19H5m14 0h2M9 7h6m-6 4h6m-6 4h6M7 5h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2z" /></svg>
+          <span>设备管理</span>
+        </a>
+        <a href="firmware-ota.html" class="admin-sidebar__link" title="固件管理">
+          <svg class="admin-sidebar__ico" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" /></svg>
+          <span>固件管理</span>
+        </a>
+      </nav>
+    </aside>
+
+    <div class="admin-main-col">
+      <header class="admin-topbar">
+        <div class="admin-topbar__left">
+          <button type="button" id="admin-drawer-toggle" class="admin-drawer-toggle lg:hidden" aria-label="打开菜单">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </button>
+          <h1 class="admin-topbar__title">设备管理</h1>
+        </div>
+        <div class="admin-user-menu">
+          <button type="button" id="admin-user-trigger" class="admin-user-trigger" aria-expanded="false" aria-haspopup="true" aria-controls="admin-user-dropdown">
+            <span class="admin-user-trigger__dot" aria-hidden="true"></span>
+            <span class="admin-user-trigger__name">admin</span>
+            <svg class="admin-user-trigger__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div id="admin-user-dropdown" class="admin-user-panel" role="menu">
+            <a href="account-password.html" role="menuitem" class="admin-user-panel__item">修改密码</a>
+            <a href="login.html" role="menuitem" class="admin-user-panel__item admin-user-panel__item--danger">退出登录</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="admin-content admin-content--datagrid">
+        <form id="device-filter-form" class="admin-card admin-filter-panel" action="javascript:void(0)" novalidate>
+          <div class="admin-filter-panel__body">
+            <div class="admin-filter-panel__row admin-filter-panel__row--split">
+              <div class="min-w-0">
+                <label for="dev-name-q" class="block text-xs font-bold text-slate-600 mb-1.5">备注名 / 设备编号</label>
+                <input
+                  type="search"
+                  id="dev-name-q"
+                  name="q"
+                  class="admin-input-search max-w-xl"
+                  placeholder="搜索备注名或设备编号…"
+                  autocomplete="off"
+                  enterkeyhint="search"
+                />
+              </div>
+              <div class="admin-filter-actions">
+                <button type="submit" class="admin-btn-primary rounded-lg bg-primary text-white px-5 py-2.5 text-sm font-semibold shadow-md shadow-blue-500/20 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary/40">
+                  应用筛选
+                </button>
+                <button type="button" id="dev-filter-reset" class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200">
+                  清空条件
+                </button>
+              </div>
+            </div>
+
+            <fieldset class="admin-filter-fieldset max-w-2xl">
+              <legend>最后上线时间</legend>
+              <div class="admin-date-range" role="group" aria-label="最后上线时间范围">
+                <input type="date" id="dev-last-start" name="lastStart" aria-label="最后上线开始日期" />
+                <span class="admin-date-range__sep">至</span>
+                <input type="date" id="dev-last-end" name="lastEnd" aria-label="最后上线结束日期" />
+              </div>
+            </fieldset>
+          </div>
+        </form>
+
+        <div class="admin-table-wrap hidden md:block">
+          <p class="admin-table-hint">「最近上线」为设备最后一次与云端通信时间（按日筛选为闭区间）。</p>
+          <table class="min-w-[800px] w-full text-left text-sm">
+            <thead class="text-slate-600 border-b border-slate-200">
+              <tr>
+                <th class="px-4 py-3 font-semibold">设备编号</th>
+                <th class="px-4 py-3 font-semibold">备注名</th>
+                <th class="px-4 py-3 font-semibold">在线</th>
+                <th class="px-4 py-3 font-semibold">固件版本</th>
+                <th class="px-4 py-3 font-semibold">所属用户</th>
+                <th class="px-4 py-3 font-semibold">最近上线</th>
+                <th class="px-4 py-3 font-semibold w-36">操作</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100" id="devices-tbody"></tbody>
+          </table>
+          <div class="admin-pagination">
+            <div class="flex items-center gap-2">
+              <span>每页</span>
+              <select id="devices-page-size" class="rounded-lg border border-slate-200 px-2 py-1.5 text-sm font-medium">
+                <option value="5">5 条</option>
+                <option value="10" selected>10 条</option>
+                <option value="20">20 条</option>
+              </select>
+            </div>
+            <div class="admin-pagination__nav">
+              <button type="button" class="admin-pagination__btn" id="devices-prev">上一页</button>
+              <span class="px-2 text-slate-600 tabular-nums" id="devices-page-indicator">第 1 / 1 页</span>
+              <button type="button" class="admin-pagination__btn" id="devices-next">下一页</button>
+            </div>
+            <span class="text-slate-500 tabular-nums" id="devices-total">共 0 条</span>
+          </div>
+        </div>
+
+        <div class="space-y-3 md:hidden" id="devices-cards"></div>
+      </main>
+    </div>
+  </div>
+
+  <script src="js/admin-nav.js"></script>
+  <script>
+    (function () {
+      var ROWS = [
+        { id: "dev_c3_a1b2c3", name: "客厅灯", online: true, ver: "1.4.2", user: "微信用户 A", last: "2026-04-08 10:02" },
+        { id: "dev_c3_x9y8z7", name: "车库", online: false, ver: "1.4.0", user: "微信用户 A", last: "2026-04-05 18:30" },
+        { id: "dev_c3_m5n6o7", name: "测试继电器", online: true, ver: "1.4.2", user: "微信用户 B", last: "2026-04-08 09:55" },
+        { id: "dev_c3_p1q2r3", name: "阳台灌溉", online: true, ver: "1.4.2", user: "微信用户 C", last: "2026-04-08 08:20" },
+        { id: "dev_c3_s4t5u6", name: "门头招牌", online: false, ver: "1.4.1", user: "微信用户 D", last: "2026-04-01 12:00" },
+        { id: "dev_c3_v7w8x9", name: "仓库排风", online: true, ver: "1.4.2", user: "微信用户 A", last: "2026-04-07 23:10" },
+        { id: "dev_c3_y0z1a2", name: "水族灯", online: true, ver: "1.4.0", user: "微信用户 E", last: "2026-04-08 07:45" },
+        { id: "dev_c3_b3c4d5", name: "展柜照明", online: true, ver: "1.4.2", user: "微信用户 B", last: "2026-04-08 06:30" },
+        { id: "dev_c3_e6f7g8", name: "机房备用", online: false, ver: "1.3.9", user: "微信用户 F", last: "2026-03-20 15:00" },
+        { id: "dev_c3_h9i0j1", name: "新风系统", online: true, ver: "1.4.2", user: "微信用户 G", last: "2026-04-08 10:15" }
+      ];
+
+      var page = 1;
+      var pageSize = 10;
+      var filtered = ROWS.slice();
+
+      function day(s) {
+        return s.slice(0, 10);
+      }
+
+      function normalizeRange(startEl, endEl) {
+        var a = startEl.value;
+        var b = endEl.value;
+        if (a && b && a > b) {
+          startEl.value = b;
+          endEl.value = a;
+        }
+      }
+
+      function applyFilters() {
+        var startEl = document.getElementById("dev-last-start");
+        var endEl = document.getElementById("dev-last-end");
+        normalizeRange(startEl, endEl);
+        var ls = startEl.value;
+        var le = endEl.value;
+        var q = (document.getElementById("dev-name-q").value || "").trim().toLowerCase();
+        filtered = ROWS.filter(function (r) {
+          if (q) {
+            var inName = r.name.toLowerCase().indexOf(q) !== -1;
+            var inId = r.id.toLowerCase().indexOf(q) !== -1;
+            if (!inName && !inId) return false;
+          }
+          var d = day(r.last);
+          if (ls && d < ls) return false;
+          if (le && d > le) return false;
+          return true;
+        });
+        page = 1;
+        render();
+      }
+
+      function render() {
+        var total = filtered.length;
+        var pages = Math.max(1, Math.ceil(total / pageSize));
+        if (page > pages) page = pages;
+        var start = (page - 1) * pageSize;
+        var slice = filtered.slice(start, start + pageSize);
+
+        document.getElementById("devices-tbody").innerHTML = slice.map(function (r) {
+          var st = r.online
+            ? '<span class="text-emerald-600 font-semibold">在线</span>'
+            : '<span class="text-slate-500">离线</span>';
+          return (
+            '<tr class="hover:bg-slate-50/80">' +
+            '<td class="px-4 py-3 font-mono text-xs text-slate-800">' + r.id + "</td>" +
+            '<td class="px-4 py-3 text-slate-900 font-medium">' + r.name + "</td>" +
+            '<td class="px-4 py-3">' + st + "</td>" +
+            '<td class="px-4 py-3 tabular-nums">' + r.ver + "</td>" +
+            '<td class="px-4 py-3 text-slate-700">' + r.user + "</td>" +
+            '<td class="px-4 py-3 text-slate-600 tabular-nums">' + r.last + "</td>" +
+            '<td class="px-4 py-3"><a href="device-logs.html?deviceId=' + encodeURIComponent(r.id) + '" class="text-primary font-semibold hover:underline">操作日志</a></td>' +
+            "</tr>"
+          );
+        }).join("");
+
+        document.getElementById("devices-page-indicator").textContent = "第 " + page + " / " + pages + " 页";
+        document.getElementById("devices-total").textContent = "共 " + total + " 条";
+        document.getElementById("devices-prev").disabled = page <= 1;
+        document.getElementById("devices-next").disabled = page >= pages;
+
+        document.getElementById("devices-cards").innerHTML = slice.map(function (r) {
+          var st = r.online ? "在线" : "离线";
+          var sc = r.online ? "text-emerald-600" : "text-slate-500";
+          return (
+            '<article class="admin-card p-4 space-y-2">' +
+            '<div class="flex justify-between gap-2"><span class="font-semibold text-slate-900">' + r.name + '</span><span class="text-sm ' + sc + '">' + st + "</span></div>" +
+            '<p class="text-xs font-mono text-slate-600">' + r.id + "</p>" +
+            '<p class="text-xs text-slate-500">所属 ' + r.user + " · 固件 " + r.ver + " · 最近 " + day(r.last) + "</p>" +
+            '<a href="device-logs.html?deviceId=' + encodeURIComponent(r.id) + '" class="inline-block text-sm text-primary font-semibold">操作日志</a>' +
+            "</article>"
+          );
+        }).join("");
+      }
+
+      document.getElementById("devices-page-size").addEventListener("change", function () {
+        pageSize = parseInt(this.value, 10);
+        page = 1;
+        render();
+      });
+      document.getElementById("devices-prev").addEventListener("click", function () {
+        if (page > 1) { page--; render(); }
+      });
+      document.getElementById("devices-next").addEventListener("click", function () {
+        var pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+        if (page < pages) { page++; render(); }
+      });
+      document.getElementById("device-filter-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        applyFilters();
+      });
+      document.getElementById("dev-filter-reset").addEventListener("click", function () {
+        document.getElementById("dev-name-q").value = "";
+        document.getElementById("dev-last-start").value = "";
+        document.getElementById("dev-last-end").value = "";
+        filtered = ROWS.slice();
+        page = 1;
+        render();
+      });
+
+      applyFilters();
+    })();
+  </script>
+</body>
+</html>
