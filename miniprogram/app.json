@@ -1,0 +1,46 @@
+{
+  "pages": [
+    "pages/devices/devices",
+    "pages/mine/mine",
+    "pages/device-detail/device-detail",
+    "pages/provision/provision",
+    "pages/bind/bind",
+    "pages/logs/logs",
+    "pages/schedules/schedules"
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "SmartRelay",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f7fa"
+  },
+  "tabBar": {
+    "color": "#8a8f99",
+    "selectedColor": "#2563eb",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/devices/devices",
+        "text": "设备",
+        "iconPath": "images/tab/tab-device.png",
+        "selectedIconPath": "images/tab/tab-device-active.png"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的",
+        "iconPath": "images/tab/tab-mine.png",
+        "selectedIconPath": "images/tab/tab-mine-active.png"
+      }
+    ]
+  },
+  "permission": {
+    "scope.bluetooth": {
+      "desc": "用于搜索并连接设备进行 WiFi 配网"
+    }
+  },
+  "requiredPrivateInfos": [],
+  "lazyCodeLoading": "requiredComponents",
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

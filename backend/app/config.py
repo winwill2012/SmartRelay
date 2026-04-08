@@ -12,10 +12,10 @@ class Settings(BaseSettings):
     app_name: str = "SmartRelay API"
     debug: bool = False
 
-    # MySQL (async SQLAlchemy)
-    mysql_host: str = "127.0.0.1"
+    # MySQL (async SQLAlchemy)；无 .env 时仍建议复制 .env.example 为 .env
+    mysql_host: str = "119.29.197.186"
     mysql_port: int = 3306
-    mysql_user: str = "root"
+    mysql_user: str = "SmartRelay"
     mysql_password: str = ""
     mysql_database: str = "SmartRelay"
 
@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     wechat_secret: str = ""
 
     # MQTT (server connects as broker user per resource.md / §8)
-    mqtt_host: str = "127.0.0.1"
+    mqtt_host: str = "119.29.197.186"
     mqtt_port: int = 1883
     mqtt_username: str = ""
     mqtt_password: str = ""

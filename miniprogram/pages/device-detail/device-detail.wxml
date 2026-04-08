@@ -1,0 +1,27 @@
+<view class="page" wx:if="{{device}}">
+  <view class="card">
+    <view class="row">
+      <text class="title">{{device.remark_name || device.device_sn}}</text>
+      <text class="{{device.online ? 'tag-online' : 'tag-offline'}}">{{device.online ? '在线' : '离线'}}</text>
+    </view>
+    <view class="text-muted">SN: {{device.device_sn}}</view>
+    <view class="text-muted" wx:if="{{device.last_seen_at}}">最近上报: {{device.last_seen_at}}</view>
+  </view>
+
+  <view class="card switch-card">
+    <view class="row">
+      <text>远程开关</text>
+      <switch checked="{{device.relay_state === 1}}" disabled="{{cmdLoading}}" bindchange="onRelayChange" color="#2563eb" />
+    </view>
+    <view class="text-muted tip">指令经服务端 MQTT 下发；在线状态由服务端「最后上行时间」规则判定（约 10 秒）。</view>
+  </view>
+
+  <view class="card actions">
+    <button class="link" bindtap="goLogs">操作日志</button>
+    <button class="link" bindtap="goSchedules">定时任务（最多 10 条）</button>
+    <button class="link" bindtap="onEditRemark">修改备注</button>
+    <button class="link danger" bindtap="onUnbind">解绑设备</button>
+  </view>
+</view>
+
+<view wx:else class="state">{{loading ? '加载中...' : '未找到设备'}}</view>

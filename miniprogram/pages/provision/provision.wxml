@@ -1,0 +1,36 @@
+<view class="page">
+  <view class="card intro">
+    <view class="h3">配网说明</view>
+    <text class="p">请确保手机蓝牙已开启；本流程将连接设备自定义 GATT 服务，并下发协议文档第 7 节规定的 JSON 帧（type: wifi_config）。Android 可能需定位权限以扫描蓝牙设备。</text>
+  </view>
+
+  <view class="card">
+    <view class="label">WiFi 名称 SSID</view>
+    <input class="input" value="{{ssid}}" placeholder="2.4G WiFi 名称" bindinput="onSsid" />
+    <view class="label">WiFi 密码</view>
+    <input class="input" password value="{{wifiPwd}}" placeholder="密码" bindinput="onWifiPwd" />
+    <view class="label">可选 token（HTTP 注册用）</view>
+    <input class="input" value="{{token}}" placeholder="可留空" bindinput="onToken" />
+  </view>
+
+  <view class="card">
+    <button class="btn-primary" loading="{{scanning}}" bindtap="onStartBle">1. 申请权限并开始扫描</button>
+    <button class="btn-secondary" wx:if="{{devices.length}}" bindtap="onPickDevice">2. 选择设备连接并下发</button>
+  </view>
+
+  <view class="card" wx:if="{{devices.length}}">
+    <view class="h3">附近设备</view>
+    <view wx:for="{{devices}}" wx:key="deviceId" class="dev" data-id="{{item.deviceId}}" bindtap="selectDev">
+      <text>{{item.name || '未命名'}}</text>
+      <text class="text-muted">{{item.deviceId}}</text>
+    </view>
+  </view>
+
+  <view class="card log">
+    <text>{{statusText}}</text>
+  </view>
+
+  <view class="card">
+    <button class="btn-link" bindtap="goBind">配网完成，去绑定设备</button>
+  </view>
+</view>

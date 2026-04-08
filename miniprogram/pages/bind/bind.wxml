@@ -1,0 +1,10 @@
+<view class="page">
+  <view class="card">
+    <view class="label">device_sn（大写十六进制，见设备标签）</view>
+    <input class="input" value="{{deviceSn}}" placeholder="如 A1B2C3D4E5F6" bindinput="onSn" />
+    <view class="label">mqtt_password（与 devices 表一致，出厂或后台提供）</view>
+    <input class="input" value="{{mqttPassword}}" placeholder="服务端生成的 MQTT 密码" bindinput="onPwd" />
+    <button class="btn-primary" loading="{{loading}}" bindtap="onBind">提交绑定</button>
+    <view class="text-muted hint">POST /api/v1/devices/bind，服务端校验 SN 与密码后方可绑定。</view>
+  </view>
+</view>

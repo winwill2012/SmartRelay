@@ -1,0 +1,46 @@
+<view class="page">
+  <view class="hero">
+    <view class="hero-title">我的设备</view>
+    <view class="hero-sub">远程控制继电器 · 支持蓝牙配网</view>
+  </view>
+  <view class="toolbar">
+    <button class="btn-add" bindtap="onAddDevice">添加设备（配网）</button>
+  </view>
+
+  <block wx:if="{{loading}}">
+    <view class="state">
+      <view class="spinner" />
+      <text>加载中</text>
+    </view>
+  </block>
+
+  <block wx:elif="{{error}}">
+    <view class="error-box">
+      <view class="error-title">加载失败</view>
+      <view class="state error-text">{{error}}</view>
+      <button class="btn-retry" bindtap="loadList">重试</button>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view wx:if="{{devices.length === 0}}" class="empty">
+      <view class="empty-icon" />
+      <view>暂无设备</view>
+      <view class="empty-hint">请先完成蓝牙配网并在「绑定」页关联设备</view>
+    </view>
+    <view
+      wx:for="{{devices}}"
+      wx:key="device_id"
+      class="card device"
+      data-id="{{item.device_id}}"
+      bindtap="openDetail"
+    >
+      <view class="row">
+        <text class="name">{{item.remark_name || item.device_sn}}</text>
+        <text class="{{item.online ? 'tag-online' : 'tag-offline'}}">{{item.online ? '在线' : '离线'}}</text>
+      </view>
+      <view class="meta text-muted">SN: {{item.device_sn}}</view>
+      <view class="meta text-muted">继电器: {{item.relay_state ? '开' : '关'}}</view>
+    </view>
+  </block>
+</view>

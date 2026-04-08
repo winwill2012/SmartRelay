@@ -1,0 +1,16 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="state">加载中...</view>
+  <block wx:else>
+    <view wx:if="{{items.length === 0}}" class="state">暂无日志</view>
+    <view wx:for="{{items}}" wx:key="id" class="card log">
+      <view class="row">
+        <text class="action">{{item.action}}</text>
+        <text class="text-muted">{{item.created_at}}</text>
+      </view>
+      <view class="text-muted">来源: {{item.source}}</view>
+    </view>
+    <view class="more" wx:if="{{hasMore}}">
+      <button class="btn-more" bindtap="loadMore" loading="{{loadingMore}}">加载更多</button>
+    </view>
+  </block>
+</view>

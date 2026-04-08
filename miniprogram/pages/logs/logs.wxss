@@ -1,0 +1,28 @@
+.page {
+  padding-bottom: 48rpx;
+}
+
+.state {
+  text-align: center;
+  padding: 80rpx;
+  color: #6b7280;
+}
+
+.log .row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+}
+
+.action {
+  font-weight: 600;
+}
+
+.more {
+  padding: 24rpx;
+}
+
+.btn-more {
+  background: #f3f4f6;
+  color: #111827;
+}

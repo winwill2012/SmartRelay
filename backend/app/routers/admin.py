@@ -56,12 +56,28 @@ async def dashboard(db: Annotated[AsyncSession, Depends(get_db)], _: Annotated[A
         )
     )
     today = r.scalar() or 0
+    r_series = await db.execute(
+        text(
+            """
+            SELECT HOUR(created_at) AS hr, COUNT(*) AS cnt
+            FROM device_operation_logs
+            WHERE action IN ('relay_on','relay_off')
+              AND DATE(created_at) = DATE(UTC_TIMESTAMP())
+            GROUP BY HOUR(created_at)
+            """
+        )
+    )
+    hour_map: dict[int, int] = {}
+    for row in r_series.fetchall():
+        hour_map[int(row[0])] = int(row[1])
+    series = [{"hour": f"{h:02d}", "commands": hour_map.get(h, 0)} for h in range(24)]
     return ok(
         {
             "user_count": int(users or 0),
             "device_count": int(devices or 0),
             "online_count": int(online or 0),
             "today_command_count": int(today),
+            "series": series,
         }
     )
 
@@ -82,6 +98,7 @@ async def admin_users(
             "wx_openid": u.wx_openid,
             "nickname": u.nickname,
             "created_at": u.created_at.isoformat() + "Z" if u.created_at else None,
+            "last_login_at": u.last_login_at.isoformat() + "Z" if u.last_login_at else None,
         }
         for u in rows
     ]
@@ -104,6 +121,7 @@ async def admin_user_detail(
             "device_sn": d.device_sn,
             "relay_state": d.relay_state,
             "online": d.online,
+            "remark_name": d.remark_name,
         }
         for d in devs
     ]
@@ -112,6 +130,8 @@ async def admin_user_detail(
             "user_id": u.id,
             "wx_openid": u.wx_openid,
             "nickname": u.nickname,
+            "created_at": u.created_at.isoformat() + "Z" if u.created_at else None,
+            "last_login_at": u.last_login_at.isoformat() + "Z" if u.last_login_at else None,
             "devices": devices,
         }
     )
@@ -134,6 +154,7 @@ async def admin_devices(
             "owner_user_id": d.owner_user_id,
             "relay_state": d.relay_state,
             "online": d.online,
+            "remark_name": d.remark_name,
             "last_seen_at": d.last_seen_at.isoformat() + "Z" if d.last_seen_at else None,
         }
         for d in rows
