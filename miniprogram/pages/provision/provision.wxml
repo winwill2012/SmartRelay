@@ -40,47 +40,28 @@
 
   <view wx:if="{{step===1}}" class="block">
     <text class="label">Wi-Fi 网络</text>
-
-    <block wx:if="{{!manualSsid}}">
-      <view
-        wx:if="{{wifiListEnriched.length}}"
-        class="picker-box"
-        bindtap="openWifiSheet"
-      >
-        <text class="picker-text">{{wifiSsid || '请选择 Wi-Fi'}}</text>
-        <view class="picker-actions">
-          <view class="wifi-refresh" catchtap="refreshWifiList" hover-class="none">
-            <text class="wifi-refresh-text {{wifiLoading ? 'loading' : ''}}">刷新</text>
-          </view>
-          <text class="picker-arrow">›</text>
+    <view class="picker-box">
+      <input class="picker-input" placeholder="输入 Wi-Fi 名称" value="{{wifiSsid}}" bindinput="onSsid"/>
+      <view class="picker-actions">
+        <view class="wifi-refresh" catchtap="refreshWifiList" hover-class="none">
+          <text class="wifi-refresh-text {{wifiLoading ? 'loading' : ''}}">刷新</text>
         </view>
+        <text class="picker-arrow {{wifiListEnriched.length ? '' : 'muted'}}" bindtap="openWifiSheet">›</text>
       </view>
-
-      <view wx:else class="picker-box">
-        <text class="picker-text placeholder">{{wifiLoading ? '扫描中…' : '暂无 Wi-Fi'}}</text>
-        <view class="picker-actions">
-          <view class="wifi-refresh" catchtap="refreshWifiList" hover-class="none">
-            <text class="wifi-refresh-text {{wifiLoading ? 'loading' : ''}}">刷新</text>
-          </view>
-          <text class="picker-arrow muted">›</text>
-        </view>
-      </view>
-    </block>
-
-    <view wx:if="{{manualSsid}}" class="input-wrap">
-      <input class="input" placeholder="Wi-Fi 名称" value="{{wifiSsid}}" bindinput="onSsid"/>
-    </view>
-
-    <view class="manual-toggle" bindtap="toggleManualSsid">
-      {{manualSsid ? '← 从列表选择' : '手动输入名称'}}
     </view>
 
     <text class="label mt">密码</text>
-    <input class="input" password="{{!showPwd}}" placeholder="输入 WiFi 密码" value="{{wifiPwd}}" bindinput="onPwd"/>
-    <view class="pwd-toggle" bindtap="togglePwd">{{showPwd ? '隐藏' : '显示'}}密码</view>
+    <view class="pwd-box">
+      <input class="pwd-input" password="{{!showPwd}}" placeholder="输入 WiFi 密码" value="{{wifiPwd}}" bindinput="onPwd"/>
+      <view class="eye" bindtap="togglePwd">
+        <view class="eye-icon {{showPwd ? 'on' : 'off'}}">
+          <view class="eye-dot"/>
+        </view>
+      </view>
+    </view>
 
-    <button class="btn-primary full mt-lg" loading="{{provisioning}}" bindtap="onStartProvision">开始配网</button>
-    <button class="btn-ghost full" bindtap="onCancelWifi">上一步</button>
+    <button class="btn-primary full mt-lg" loading="{{provisioning}}" disabled="{{provisioning}}" bindtap="onStartProvision">开始配网</button>
+    <button class="btn-ghost full" disabled="{{provisioning}}" bindtap="onCancelWifi">上一步</button>
   </view>
 
   <view wx:if="{{showWifiSheet}}" class="wifi-mask" bindtap="closeWifiSheet">

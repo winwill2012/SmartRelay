@@ -5,7 +5,6 @@ Page({
   data: {
     loggedIn: false,
     nickname: '',
-    avatar: '',
     deviceCount: 0,
     scheduleCount: 0,
     notifyCount: 0
@@ -22,8 +21,7 @@ Page({
         deviceCount: 0,
         scheduleCount: 0,
         notifyCount: 0,
-        nickname: '',
-        avatar: ''
+        nickname: ''
       })
     }
   },
@@ -45,10 +43,8 @@ Page({
             ? stats.schedule_count
             : data.timer_count || 0
       const nickname = (data.nickname || data.nick_name || '').trim()
-      const avatar = (data.avatar_url || '').trim()
       this.setData({
         nickname,
-        avatar,
         deviceCount,
         scheduleCount
       })
@@ -57,36 +53,30 @@ Page({
     }
   },
 
-  async onChooseAvatar(e) {
-    const path = e.detail && e.detail.avatarUrl
-    if (!path) return
-    wx.showLoading({ title: '上传中…', mask: true })
-    try {
-      const res = await api.uploadUserAvatar(path)
-      const url = (res && res.avatar_url) || ''
-      if (url) {
-        this.setData({ avatar: url })
-        wx.showToast({ title: '头像已更新', icon: 'success' })
-      }
-    } catch (err) {
-      wx.showToast({ title: (err && err.message) || '上传失败', icon: 'none' })
-    } finally {
-      wx.hideLoading()
-    }
-  },
-
-  async onNicknameBlur(e) {
-    const v = ((e.detail && e.detail.value) || '').trim()
-    if (v === this.data.nickname) return
+  async onTapNickname() {
+    const current = this.data.nickname || ''
+    const res = await new Promise((resolve) => {
+      wx.showModal({
+        title: '修改昵称',
+        editable: true,
+        placeholderText: '请输入昵称',
+        content: current,
+        success: resolve,
+        fail: () => resolve({ confirm: false })
+      })
+    })
+    if (!res || !res.confirm) return
+    const v = String(res.content || '').trim()
+    if (!v || v === current) return
     wx.showLoading({ title: '保存中…', mask: true })
     try {
       await api.patchUserMe({ nickname: v })
       this.setData({ nickname: v })
-      wx.hideLoading()
-      wx.showToast({ title: '昵称已保存', icon: 'success' })
+      wx.showToast({ title: '昵称已更新', icon: 'success' })
     } catch (err) {
-      wx.hideLoading()
       wx.showToast({ title: (err && err.message) || '保存失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
     }
   },
 
@@ -108,8 +98,7 @@ Page({
       deviceCount: 0,
       scheduleCount: 0,
       notifyCount: 0,
-      nickname: '',
-      avatar: ''
+      nickname: ''
     })
     wx.showToast({ title: '已退出', icon: 'success' })
   }

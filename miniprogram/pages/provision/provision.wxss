@@ -88,7 +88,9 @@
   color: #fff;
   font-weight: 600;
   border-radius: 24rpx;
-  padding: 28rpx 0;
+  line-height: 84rpx;
+  padding: 0;
+  font-size: 30rpx;
 }
 
 .btn-primary::after {
@@ -104,6 +106,8 @@
   background: transparent;
   color: #64748b;
   font-size: 28rpx;
+  line-height: 72rpx;
+  padding: 0;
 }
 
 .btn-ghost::after {
@@ -192,6 +196,13 @@
   font-weight: 400;
 }
 
+.picker-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
+  color: #0f172a;
+}
+
 .picker-actions {
   display: flex;
   align-items: center;
@@ -216,24 +227,90 @@
 }
 
 .picker-arrow {
-  font-size: 36rpx;
-  color: #94a3b8;
-  line-height: 1;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 9999rpx;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 34rpx;
+  font-weight: 700;
+  line-height: 48rpx;
+  text-align: center;
+  padding: 0;
 }
 
 .picker-arrow.muted {
-  opacity: 0.4;
+  background: #f1f5f9;
+  color: #94a3b8;
+  opacity: 1;
 }
 
-.input-wrap {
-  margin-top: 8rpx;
+.pwd-box {
+  margin-top: 12rpx;
+  display: flex;
+  align-items: center;
+  border-radius: 24rpx;
+  border: 2rpx solid #e2e8f0;
+  background: #fff;
+  padding: 0 20rpx;
 }
 
-.manual-toggle {
-  margin-top: 16rpx;
-  font-size: 26rpx;
-  color: #2563eb;
-  font-weight: 500;
+.pwd-input {
+  flex: 1;
+  min-height: 84rpx;
+  font-size: 28rpx;
+  padding: 0;
+}
+
+.eye {
+  margin-left: 12rpx;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 9999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+}
+
+.eye-icon {
+  width: 30rpx;
+  height: 20rpx;
+  border: 3rpx solid #64748b;
+  border-radius: 9999rpx;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.eye-dot {
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 9999rpx;
+  background: #64748b;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.eye-icon.off::after {
+  content: '';
+  position: absolute;
+  left: -5rpx;
+  top: 8rpx;
+  width: 36rpx;
+  height: 3rpx;
+  background: #64748b;
+  transform: rotate(-28deg);
+  border-radius: 9999rpx;
+}
+
+.eye-icon.on {
+  border-color: #2563eb;
+}
+
+.eye-icon.on .eye-dot {
+  background: #2563eb;
 }
 
 .wifi-mask {

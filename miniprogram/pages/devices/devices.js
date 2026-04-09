@@ -55,9 +55,20 @@ Page({
 
   onShow() {
     this.setData({ loggedIn: auth.isLoggedIn() })
+    this.applyGlobalPatch()
     if (auth.isLoggedIn()) {
       this.loadDevices()
     }
+  },
+
+  applyGlobalPatch() {
+    const patch = getApp().globalData.deviceStatePatch
+    if (!patch || !patch.device_id) return
+    const rawList = this.data.rawList.map((row) =>
+      row.device_id === patch.device_id ? { ...row, relay_on: !!patch.relay_on } : row
+    )
+    const displayList = applyFilter(rawList, this.data.filter)
+    this.setData({ rawList, displayList })
   },
 
   async loadDevices(silent) {

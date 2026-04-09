@@ -30,7 +30,9 @@ async def me(
 
     dev_ids = select(UserDevice.device_id).where(UserDevice.user_id == user_id)
     c_sched = await session.execute(
-        select(func.count()).select_from(Schedule).where(Schedule.device_id.in_(dev_ids))
+        select(func.count())
+        .select_from(Schedule)
+        .where(Schedule.device_id.in_(dev_ids), Schedule.enabled.is_(True))
     )
     schedule_count = int(c_sched.scalar_one() or 0)
 
@@ -117,7 +119,9 @@ async def patch_me(
     device_count = int(c_dev.scalar_one() or 0)
     dev_ids = select(UserDevice.device_id).where(UserDevice.user_id == user_id)
     c_sched = await session.execute(
-        select(func.count()).select_from(Schedule).where(Schedule.device_id.in_(dev_ids))
+        select(func.count())
+        .select_from(Schedule)
+        .where(Schedule.device_id.in_(dev_ids), Schedule.enabled.is_(True))
     )
     schedule_count = int(c_sched.scalar_one() or 0)
     return ok(

@@ -20,7 +20,16 @@
     <view wx:elif="{{error}}" class="hint err">{{error}}</view>
 
     <block wx:else>
-      <view wx:if="{{displayList.length === 0}}" class="hint">暂无设备</view>
+      <view wx:if="{{displayList.length === 0}}" class="empty-state">
+        <view class="empty-illustration">
+          <view class="empty-antenna"/>
+          <view class="empty-box">
+            <view class="empty-led"/>
+          </view>
+        </view>
+        <text class="empty-title">暂无设备</text>
+        <text class="empty-sub">点击右下角 + 号，开始添加你的第一台设备</text>
+      </view>
       <view wx:for="{{displayList}}" wx:key="device_id" class="device-row card" data-online="{{item.online}}">
         <view class="device-inner">
           <navigator

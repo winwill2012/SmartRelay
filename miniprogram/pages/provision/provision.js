@@ -18,8 +18,11 @@ Page({
     wifiListRaw: [],
     wifiListEnriched: [],
     wifiPickerIndex: 0,
-    manualSsid: false,
     showWifiSheet: false
+  },
+
+  onShow() {
+    this._alive = true
   },
 
   stopSheetBubble() {},
@@ -48,24 +51,18 @@ Page({
   },
 
   onUnload() {
+    this._alive = false
+    this._provReqId = (this._provReqId || 0) + 1
     ble.stopScan().catch(() => {})
     wifi.stopWifi().catch(() => {})
   },
 
-  togglePwd() {
-    this.setData({ showPwd: !this.data.showPwd })
+  onHide() {
+    this._alive = false
   },
 
-  toggleManualSsid() {
-    const manual = !this.data.manualSsid
-    this.setData({ manualSsid: manual })
-    if (!manual && this.data.wifiListRaw.length) {
-      const idx = Math.min(this.data.wifiPickerIndex, this.data.wifiListRaw.length - 1)
-      const row = this.data.wifiListRaw[idx]
-      if (row && row.SSID) {
-        this.setData({ wifiSsid: row.SSID })
-      }
-    }
+  togglePwd() {
+    this.setData({ showPwd: !this.data.showPwd })
   },
 
   onSsid(e) {
@@ -178,8 +175,7 @@ Page({
           pickedName: name,
           wifiListRaw: [],
           wifiListEnriched: [],
-          wifiSsid: '',
-          manualSsid: false
+          wifiSsid: ''
         },
         () => {
           this.refreshWifiList()
@@ -207,19 +203,28 @@ Page({
     if (this.data.pickedId) {
       ble.disconnect(this.data.pickedId).catch(() => {})
     }
+    wx.hideLoading()
     this.setData({ step: 0, provisioning: false })
   },
 
   async onStartProvision() {
+    if (this.data.provisioning) return
     const { wifiSsid, wifiPwd, pickedId } = this.data
     if (!wifiSsid) {
       wx.showToast({ title: '请选择或输入 Wi-Fi 名称', icon: 'none' })
       return
     }
+    if (!pickedId) {
+      wx.showToast({ title: '设备未连接，请返回重试', icon: 'none' })
+      return
+    }
+    const reqId = (this._provReqId || 0) + 1
+    this._provReqId = reqId
     this.setData({ provisioning: true })
     wx.showLoading({ title: '配网中…', mask: true })
     try {
-      const info = await this._provisionOnce(pickedId, wifiSsid, wifiPwd)
+      const info = await this._provisionStable(pickedId, wifiSsid, wifiPwd)
+      if (!this._alive || this._provReqId !== reqId) return
       app.globalData.provisionResult = Object.assign({}, info, {
         bleDeviceId: pickedId
       })
@@ -231,79 +236,26 @@ Page({
         )}`
       })
     } catch (e) {
+      if (!this._alive || this._provReqId !== reqId) return
       wx.hideLoading()
       this.setData({ provisioning: false })
       wx.showToast({ title: e.message || '配网失败', icon: 'none' })
     }
   },
 
-  _provisionOnce(deviceId, ssid, password) {
-    return new Promise(async (resolve, reject) => {
-      let settled = false
-      const timer = setTimeout(() => {
-        if (settled) return
-        settled = true
-        reject(new Error('配网超时'))
-      }, 180000)
-
-      function finish(err, data) {
-        if (settled) return
-        settled = true
-        clearTimeout(timer)
-        if (err) reject(err)
-        else resolve(data)
-      }
-
-      try {
-        const serviceId = await ble.findService(deviceId)
-        const { rx, tx } = await ble.resolveProvisionCharIds(deviceId, serviceId)
-        await ble.setMtu(deviceId)
-        await ble.delay(120)
-        await ble.enableNotify(
-          deviceId,
-          serviceId,
-          (msg) => {
-            if (!msg || typeof msg !== 'object') return
-            if (msg.type === 'wifi.result' && msg.ok === false) {
-              const hint = msg.hint || ''
-              const code =
-                msg.wifi_status != null ? ` [WiFi状态${msg.wifi_status}]` : ''
-              finish(
-                new Error(
-                  (hint || msg.error || 'WiFi 连接失败') + code
-                )
-              )
-              return
-            }
-            /* 成功：固件在 wifi.result 中带 device_id（单条 JSON），避免依赖第二条 device.info 在共存场景丢失 */
-            if (
-              msg.device_id &&
-              (msg.type === 'device.info' ||
-                (msg.type === 'wifi.result' && msg.ok === true))
-            ) {
-              finish(null, {
-                device_id: msg.device_id,
-                mac: msg.mac,
-                fw_version: msg.fw_version,
-                device_secret: msg.device_secret
-              })
-            }
-          },
-          tx
-        )
-        await ble.writeJson(
-          deviceId,
-          serviceId,
-          {
-            type: 'wifi.set',
-            ssid,
-            password
-          },
-          rx
-        )
-      } catch (e) {
-        finish(e, null)
-      }
-    })
+  async _provisionStable(deviceId, ssid, password) {
+    const tryOnce = () => ble.provisionWifi(deviceId, ssid, password, 160000)
+    try {
+      return await tryOnce()
+    } catch (e) {
+      const msg = String((e && e.message) || '')
+      const retryable =
+        /超时|timeout|断开|not connected|10006|10008|10003/i.test(msg)
+      if (!retryable) throw e
+      await ble.disconnect(deviceId).catch(() => {})
+      await ble.delay(300)
+      await ble.connect(deviceId)
+      return await tryOnce()
+    }
   }
 })

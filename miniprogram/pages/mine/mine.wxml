@@ -5,18 +5,12 @@
       <text class="guest-tip">登录后同步设备与账号信息</text>
     </view>
     <view wx:else class="user-top">
-      <button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
-        <image wx:if="{{avatar}}" class="avatar-img-inner" src="{{avatar}}" mode="aspectFill"/>
-        <view wx:else class="avatar-placeholder">点击设置头像</view>
-      </button>
-      <input
-        type="nickname"
-        class="nickname-input"
-        placeholder="点击填写昵称"
-        value="{{nickname}}"
-        bindblur="onNicknameBlur"
-      />
-      <text class="profile-hint">微信已不再通过「授权用户信息」返回真实头像与昵称，请使用上方官方能力选择头像、填写昵称；头像将上传至本服务后展示。</text>
+      <view class="avatar-static">
+        <text class="avatar-static-icon">⏻</text>
+      </view>
+      <view class="nickname-btn" bindtap="onTapNickname">
+        <text class="nickname-text {{nickname ? '' : 'placeholder'}}">{{nickname || '点击设置昵称'}}</text>
+      </view>
     </view>
 
     <view class="stats">
@@ -26,10 +20,7 @@
       </view>
       <view class="stat-box">
         <text class="stat-label">定时任务</text>
-        <view class="stat-row">
-          <text class="stat-num">{{scheduleCount}}</text>
-          <text class="stat-cap"> / 10</text>
-        </view>
+        <text class="stat-num">{{scheduleCount}}</text>
       </view>
     </view>
   </view>

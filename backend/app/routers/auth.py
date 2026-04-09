@@ -1,4 +1,5 @@
 import logging
+import hashlib
 from datetime import datetime
 
 import httpx
@@ -23,6 +24,15 @@ _KNOWN_MOCK_LOGIN_CODES = frozenset(
         "thecodetislalmocklong",
     }
 )
+
+
+def _default_nickname_by_openid(openid: str) -> str:
+    """
+    基于 openid 生成稳定且几乎不重复的默认昵称：
+    形如 用户A1B2C3。
+    """
+    h = hashlib.sha1(openid.encode("utf-8")).hexdigest().upper()
+    return f"用户{h[:6]}"
 
 
 @router.post("/auth/wechat")
@@ -69,12 +79,20 @@ async def auth_wechat(body: WechatAuthBody, session: AsyncSession = Depends(get_
     user = r.scalar_one_or_none()
     now = datetime.now()
     if user is None:
-        user = User(openid=openid, created_at=now, last_login_at=now)
+        user = User(
+            openid=openid,
+            nickname=_default_nickname_by_openid(openid),
+            created_at=now,
+            last_login_at=now,
+        )
         session.add(user)
         await session.commit()
         await session.refresh(user)
     else:
         user.last_login_at = now
+        raw_nick = (user.nickname or "").strip()
+        if (not raw_nick) or raw_nick == "微信用户":
+            user.nickname = _default_nickname_by_openid(openid)
         await session.commit()
 
     token = create_access_token(str(user.id), token_type="wx_user")

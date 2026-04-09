@@ -14,8 +14,8 @@
 
 #define BOOT_CLEAR_MS 5000
 
-/** 心跳 / 遥测上报间隔（协议 §1：5s） */
-#define HEARTBEAT_INTERVAL_MS 5000
+/** 心跳 / 遥测上报间隔（缩短以降低在线状态延迟） */
+#define HEARTBEAT_INTERVAL_MS 3000
 
 /** BLE 广播名前缀 §7：SR- */
 #define BLE_NAME_PREFIX "SR-"

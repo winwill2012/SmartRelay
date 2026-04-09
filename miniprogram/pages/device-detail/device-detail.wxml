@@ -3,8 +3,9 @@
   <block wx:else>
     <view class="card head">
       <view class="head-row">
-        <view>
+        <view class="name-block" bindtap="onEditName">
           <text class="dev-name">{{device.name}}</text>
+          <text class="edit-tip">点击修改名称</text>
           <text class="dev-id">{{device.device_id}}</text>
         </view>
         <view wx:if="{{device.online}}" class="badge badge-on">
@@ -29,13 +30,6 @@
     </view>
 
     <view class="card menu">
-      <navigator
-        class="menu-row border"
-        url="/pages/device-rename/device-rename?id={{device.device_id}}&name={{encodedName}}"
-      >
-        <text>修改备注名</text>
-        <text class="chev">›</text>
-      </navigator>
       <navigator
         class="menu-row border"
         url="/pages/schedules/schedules?device_id={{device.device_id}}"

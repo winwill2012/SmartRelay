@@ -217,9 +217,35 @@ function abToUtf8(ab) {
   if (typeof TextDecoder !== 'undefined') {
     return new TextDecoder('utf-8').decode(u8)
   }
-  let s = ''
-  for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i])
-  return s
+  // 微信低版本无 TextDecoder 时，手动按 UTF-8 解码，避免中文提示乱码
+  let out = ''
+  let i = 0
+  while (i < u8.length) {
+    const c = u8[i++]
+    if (c < 0x80) {
+      out += String.fromCharCode(c)
+      continue
+    }
+    if ((c & 0xe0) === 0xc0) {
+      const c2 = u8[i++] & 0x3f
+      out += String.fromCharCode(((c & 0x1f) << 6) | c2)
+      continue
+    }
+    if ((c & 0xf0) === 0xe0) {
+      const c2 = u8[i++] & 0x3f
+      const c3 = u8[i++] & 0x3f
+      out += String.fromCharCode(((c & 0x0f) << 12) | (c2 << 6) | c3)
+      continue
+    }
+    const c2 = u8[i++] & 0x3f
+    const c3 = u8[i++] & 0x3f
+    const c4 = u8[i++] & 0x3f
+    let cp = ((c & 0x07) << 18) | (c2 << 12) | (c3 << 6) | c4
+    cp -= 0x10000
+    out += String.fromCharCode(0xd800 + (cp >> 10))
+    out += String.fromCharCode(0xdc00 + (cp & 0x3ff))
+  }
+  return out
 }
 
 function writeJson(deviceId, serviceId, jsonObj, characteristicId) {
@@ -254,6 +280,10 @@ function mergeFrameChunks(chunks) {
   return abToUtf8(merged.buffer)
 }
 
+function isTruthyOk(v) {
+  return v === true || v === 1 || v === '1' || v === 'true'
+}
+
 /**
  * 固件 §7：通知侧为分帧 [seq][last][payload…]，与裸 JSON 两种。
  * 裸 JSON 首字节为 `{` (0x7b)；分帧首字节为序号 0,1,2…
@@ -262,6 +292,9 @@ function enableNotify(deviceId, serviceId, onMessage, characteristicId) {
   const txId = characteristicId || CHAR_TX_UUID
   let buffer = ''
   let frameChunks = []
+  const normalizedTxId = String(txId || '')
+    .toUpperCase()
+    .replace(/-/g, '')
 
   function emitJson(text) {
     const t = (text || '').trim()
@@ -296,13 +329,24 @@ function enableNotify(deviceId, serviceId, onMessage, characteristicId) {
 
   const handler = (res) => {
     if (res.deviceId !== deviceId) return
-    const cid = (res.characteristicId || '').toUpperCase()
-    if (cid.indexOf('FFF2') < 0) return
+    const cidNorm = String(res.characteristicId || '')
+      .toUpperCase()
+      .replace(/-/g, '')
+    if (normalizedTxId && cidNorm !== normalizedTxId) {
+      if (!(normalizedTxId.indexOf('FFF2') >= 0 && cidNorm.indexOf('FFF2') >= 0)) {
+        return
+      }
+    }
     try {
       const u8 = new Uint8Array(res.value)
-      if (u8.length < 2) return
+      if (!u8.length) return
 
-      if (u8[0] === 0x7b) {
+      const looksLikeFramedHeader =
+        u8.length >= 3 &&
+        (u8[1] === 0 || u8[1] === 1) &&
+        u8[0] < 64
+
+      if (u8[0] === 0x7b || buffer || !looksLikeFramedHeader) {
         frameChunks = []
         handleUnframedChunk(res.value)
         return
@@ -340,64 +384,84 @@ function enableNotify(deviceId, serviceId, onMessage, characteristicId) {
   })
 }
 
+function disableNotify(deviceId, serviceId, characteristicId) {
+  const txId = characteristicId || CHAR_TX_UUID
+  return new Promise((resolve) => {
+    try {
+      if (typeof wx.offBLECharacteristicValueChange === 'function') {
+        wx.offBLECharacteristicValueChange()
+      }
+    } catch (e) {}
+    wx.notifyBLECharacteristicValueChange({
+      deviceId,
+      serviceId,
+      characteristicId: txId,
+      state: false,
+      complete: resolve
+    })
+  })
+}
+
 /**
  * 发送 WiFi 凭证并等待 device.info 或 wifi.result
  */
 function provisionWifi(deviceId, ssid, password, timeoutMs = 180000) {
   let serviceId = null
-  let settled = false
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
+  let txId = CHAR_TX_UUID
+  return new Promise(async (resolve, reject) => {
+    let settled = false
+    let timer = null
+
+    const finish = (err, data) => {
       if (settled) return
       settled = true
-      reject(new Error('配网超时'))
+      if (timer) clearTimeout(timer)
+      /* 先收口 UI，清理动作后台执行，避免被平台回调卡住导致一直 loading */
+      if (serviceId) {
+        disableNotify(deviceId, serviceId, txId).catch(() => {})
+      }
+      if (err) reject(err)
+      else resolve(data)
+    }
+    timer = setTimeout(() => {
+      finish(new Error('配网超时'))
     }, timeoutMs)
 
-    function done(ok, payload) {
-      if (settled) return
-      settled = true
-      clearTimeout(timer)
-      if (ok) resolve(payload)
-      else reject(payload)
+    try {
+      serviceId = await findService(deviceId)
+      const { rx, tx } = await resolveProvisionCharIds(deviceId, serviceId)
+      txId = tx || CHAR_TX_UUID
+      await setMtu(deviceId)
+      await delay(80)
+      await enableNotify(
+        deviceId,
+        serviceId,
+        (msg) => {
+          if (!msg || typeof msg !== 'object') return
+          if (msg.type === 'wifi.result') {
+            if (!isTruthyOk(msg.ok)) {
+              const t =
+                (msg.hint || msg.error || 'WiFi 连接失败') +
+                (msg.wifi_status != null ? ` [WiFi状态${msg.wifi_status}]` : '')
+              finish(new Error(t))
+              return
+            }
+            if (msg.device_id) {
+              finish(null, msg)
+            }
+            return
+          }
+          if (msg.type === 'device.info' && msg.device_id) {
+            finish(null, msg)
+          }
+        },
+        txId
+      )
+      await delay(60)
+      await writeJson(deviceId, serviceId, { type: 'wifi.set', ssid, password }, rx)
+    } catch (e) {
+      finish(e)
     }
-
-    findService(deviceId)
-      .then((sid) => {
-        serviceId = sid
-        return resolveProvisionCharIds(deviceId, sid)
-      })
-      .then(({ rx, tx }) =>
-        setMtu(deviceId).then(() => delay(120)).then(() => ({ rx, tx }))
-      )
-      .then(({ rx, tx }) =>
-        enableNotify(
-          deviceId,
-          serviceId,
-          (msg) => {
-            if (msg && msg.type === 'wifi.result') {
-              if (!msg.ok) {
-                const t =
-                  (msg.hint || msg.error || 'WiFi 失败') +
-                  (msg.wifi_status != null ? ` [${msg.wifi_status}]` : '')
-                done(false, new Error(t))
-              }
-            }
-            if (
-              msg &&
-              msg.device_id &&
-              (msg.type === 'device.info' ||
-                (msg.type === 'wifi.result' && msg.ok))
-            ) {
-              done(true, msg)
-            }
-          },
-          tx
-        ).then(() => ({ rx, tx }))
-      )
-      .then(({ rx, tx }) =>
-        writeJson(deviceId, serviceId, { type: 'wifi.set', ssid, password }, rx)
-      )
-      .catch((e) => done(false, e))
   })
 }
 
@@ -419,5 +483,6 @@ module.exports = {
   delay,
   writeJson,
   enableNotify,
+  disableNotify,
   provisionWifi
 }
