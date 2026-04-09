@@ -1,0 +1,52 @@
+{
+  "pages": [
+    "pages/devices/devices",
+    "pages/mine/mine",
+    "pages/login/login",
+    "pages/device-detail/device-detail",
+    "pages/provision/provision",
+    "pages/bind/bind",
+    "pages/schedules/schedules",
+    "pages/timer-form/timer-form",
+    "pages/logs/logs",
+    "pages/firmware/firmware",
+    "pages/shares/shares",
+    "pages/notifications/notifications",
+    "pages/device-rename/device-rename"
+  ],
+  "window": {
+    "navigationBarTitleText": "SmartRelay",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f7fa"
+  },
+  "tabBar": {
+    "color": "#8a8f99",
+    "selectedColor": "#2563eb",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/devices/devices",
+        "text": "首页",
+        "iconPath": "assets/tab-home.png",
+        "selectedIconPath": "assets/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的",
+        "iconPath": "assets/tab-mine.png",
+        "selectedIconPath": "assets/tab-mine-active.png"
+      }
+    ]
+  },
+  "permission": {
+    "scope.bluetooth": {
+      "desc": "用于发现并连接智能开关设备以完成配网"
+    },
+    "scope.userLocation": {
+      "desc": "用于扫描蓝牙设备、获取周边 Wi-Fi 列表（系统要求）"
+    }
+  },
+  "lazyCodeLoading": "requiredComponents"
+}

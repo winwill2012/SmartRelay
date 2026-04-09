@@ -1,0 +1,25 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="hint">加载中…</view>
+  <view wx:elif="{{list.length === 0}}" class="hint">暂无分享记录</view>
+  <view wx:else>
+    <view wx:for="{{list}}" wx:key="id" class="card item">
+      <text class="t">{{item.device_name || item.device_id}}</text>
+      <text class="s">{{item.status || item.role || ''}}</text>
+    </view>
+  </view>
+
+  <button class="btn" bindtap="onOpen">发起分享</button>
+
+  <view wx:if="{{show}}" class="mask" catchtouchmove="noop">
+    <view class="dialog" catchtap="noop">
+      <text class="dt">分享到其他用户</text>
+      <text class="dl">设备 ID 与对方账号（手机号或 openid，由服务端解析）</text>
+      <input class="inp" placeholder="device_id，如 SR-xxxx" value="{{deviceId}}" bindinput="onDevInput"/>
+      <input class="inp mt" placeholder="手机号 / openid" value="{{shareTo}}" bindinput="onShareInput"/>
+      <view class="dactions">
+        <button class="b-cancel" bindtap="onClose">取消</button>
+        <button class="b-ok" bindtap="onConfirm">确定</button>
+      </view>
+    </view>
+  </view>
+</view>

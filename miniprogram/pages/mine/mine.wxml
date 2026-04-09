@@ -1,0 +1,60 @@
+<view class="page">
+  <view class="hero card-gradient">
+    <view wx:if="{{!loggedIn}}" class="guest">
+      <navigator url="/pages/login/login" class="avatar-btn">登录</navigator>
+      <text class="guest-tip">登录后同步设备与账号信息</text>
+    </view>
+    <view wx:else class="user-top">
+      <button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <image wx:if="{{avatar}}" class="avatar-img-inner" src="{{avatar}}" mode="aspectFill"/>
+        <view wx:else class="avatar-placeholder">点击设置头像</view>
+      </button>
+      <input
+        type="nickname"
+        class="nickname-input"
+        placeholder="点击填写昵称"
+        value="{{nickname}}"
+        bindblur="onNicknameBlur"
+      />
+      <text class="profile-hint">微信已不再通过「授权用户信息」返回真实头像与昵称，请使用上方官方能力选择头像、填写昵称；头像将上传至本服务后展示。</text>
+    </view>
+
+    <view class="stats">
+      <view class="stat-box">
+        <text class="stat-label">已绑定设备</text>
+        <text class="stat-num {{loggedIn ? 'primary' : 'muted'}}">{{deviceCount}}</text>
+      </view>
+      <view class="stat-box">
+        <text class="stat-label">定时任务</text>
+        <view class="stat-row">
+          <text class="stat-num">{{scheduleCount}}</text>
+          <text class="stat-cap"> / 10</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="menu card">
+    <navigator url="/pages/notifications/notifications" class="menu-row border">
+      <view class="menu-left">
+        <text class="menu-ico">🔔</text>
+        <text>通知中心</text>
+      </view>
+      <view class="menu-right">
+        <text class="badge-num {{notifyCount > 0 ? 'on' : 'off'}}">{{notifyCount}}</text>
+        <text class="chev">›</text>
+      </view>
+    </navigator>
+    <navigator url="/pages/shares/shares" class="menu-row">
+      <view class="menu-left">
+        <text class="menu-ico">🔗</text>
+        <text>分享管理</text>
+      </view>
+      <text class="chev">›</text>
+    </navigator>
+  </view>
+
+  <view wx:if="{{loggedIn}}" class="logout-wrap">
+    <button class="btn-logout" bindtap="onLogout">退出登录</button>
+  </view>
+</view>

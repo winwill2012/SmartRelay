@@ -1,0 +1,67 @@
+<view class="page">
+  <view wx:if="{{!loggedIn}}" class="empty-wrap">
+    <text class="empty-title">登录以绑定设备</text>
+    <text class="empty-sub">登录后可添加设备并远程控制</text>
+    <navigator url="/pages/login/login" class="btn-login">去登录</navigator>
+  </view>
+
+  <view wx:else class="main">
+    <view class="filters" aria-role="toolbar">
+      <view
+        wx:for="{{filterModes}}"
+        wx:key="id"
+        class="filter-chip {{filter === item.id ? 'filter-chip-on' : 'filter-chip-off'}}"
+        data-mode="{{item.id}}"
+        bindtap="onFilter"
+      >{{item.label}}</view>
+    </view>
+
+    <view wx:if="{{loading}}" class="hint">加载中…</view>
+    <view wx:elif="{{error}}" class="hint err">{{error}}</view>
+
+    <block wx:else>
+      <view wx:if="{{displayList.length === 0}}" class="hint">暂无设备</view>
+      <view wx:for="{{displayList}}" wx:key="device_id" class="device-row card" data-online="{{item.online}}">
+        <view class="device-inner">
+          <navigator
+            class="device-main"
+            url="/pages/device-detail/device-detail?id={{item.device_id}}"
+            hover-class="device-main-hover"
+          >
+            <view class="device-main-inner">
+              <view class="device-text-block">
+                <text class="device-name">{{item.name}}</text>
+                <view wx:if="{{item.next_schedule_summary}}" class="schedule-line">{{item.next_schedule_summary}}</view>
+              </view>
+              <view class="device-badge-wrap">
+                <view wx:if="{{item.online}}" class="badge badge-on">
+                  <view class="dot dot-on"/>在线
+                </view>
+                <view wx:else class="badge badge-off">
+                  <view class="dot dot-off"/>离线
+                </view>
+              </view>
+            </view>
+          </navigator>
+          <view
+            class="switch-track {{item.relay_on ? 'on' : 'off'}}"
+            data-id="{{item.device_id}}"
+            data-on="{{item.relay_on}}"
+            catchtap="onToggleRelay"
+          >
+            <view class="switch-knob"/>
+          </view>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <navigator
+    wx:if="{{loggedIn}}"
+    class="fab-add"
+    url="/pages/provision/provision"
+    hover-class="fab-add-hover"
+  >
+    <text class="fab-plus">+</text>
+  </navigator>
+</view>

@@ -1,0 +1,111 @@
+<view class="page">
+  <view class="steps card">
+    <view class="step-row">
+      <view class="step-item">
+        <view class="bubble {{step>=1 ? 'done' : ''}} {{step===0 ? 'active' : ''}}">{{step>0 ? '✓' : '1'}}</view>
+        <text class="step-txt {{step===0 ? 'on' : ''}}">搜索</text>
+      </view>
+      <view class="step-line"/>
+      <view class="step-item">
+        <view class="bubble {{step>=2 ? 'done' : ''}} {{step===1 ? 'active' : ''}}">{{step>1 ? '✓' : '2'}}</view>
+        <text class="step-txt {{step===1 ? 'on' : ''}}">配网</text>
+      </view>
+      <view class="step-line"/>
+      <view class="step-item">
+        <view class="bubble {{step>=3 ? 'active' : ''}}">3</view>
+        <text class="step-txt {{step===2 ? 'on' : ''}}">绑定</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="tip-box">
+    <text class="tip-txt">设备配网模式：长按 BOOT 约 5 秒至蓝灯快闪。</text>
+  </view>
+
+  <view wx:if="{{step===0}}" class="block">
+    <button class="btn-primary full" loading="{{scanning}}" bindtap="onScan">搜索设备</button>
+    <view wx:if="{{found.length}}" class="found-title">附近设备</view>
+    <view
+      wx:for="{{found}}"
+      wx:key="deviceId"
+      class="found-row"
+      data-id="{{item.deviceId}}"
+      data-name="{{item.name}}"
+      bindtap="onPickDevice"
+    >
+      <text class="found-name">{{item.name || item.localName || '未知'}}</text>
+      <text class="found-rssi">{{item.RSSI}} dBm</text>
+    </view>
+  </view>
+
+  <view wx:if="{{step===1}}" class="block">
+    <text class="label">Wi-Fi 网络</text>
+
+    <block wx:if="{{!manualSsid}}">
+      <view
+        wx:if="{{wifiListEnriched.length}}"
+        class="picker-box"
+        bindtap="openWifiSheet"
+      >
+        <text class="picker-text">{{wifiSsid || '请选择 Wi-Fi'}}</text>
+        <view class="picker-actions">
+          <view class="wifi-refresh" catchtap="refreshWifiList" hover-class="none">
+            <text class="wifi-refresh-text {{wifiLoading ? 'loading' : ''}}">刷新</text>
+          </view>
+          <text class="picker-arrow">›</text>
+        </view>
+      </view>
+
+      <view wx:else class="picker-box">
+        <text class="picker-text placeholder">{{wifiLoading ? '扫描中…' : '暂无 Wi-Fi'}}</text>
+        <view class="picker-actions">
+          <view class="wifi-refresh" catchtap="refreshWifiList" hover-class="none">
+            <text class="wifi-refresh-text {{wifiLoading ? 'loading' : ''}}">刷新</text>
+          </view>
+          <text class="picker-arrow muted">›</text>
+        </view>
+      </view>
+    </block>
+
+    <view wx:if="{{manualSsid}}" class="input-wrap">
+      <input class="input" placeholder="Wi-Fi 名称" value="{{wifiSsid}}" bindinput="onSsid"/>
+    </view>
+
+    <view class="manual-toggle" bindtap="toggleManualSsid">
+      {{manualSsid ? '← 从列表选择' : '手动输入名称'}}
+    </view>
+
+    <text class="label mt">密码</text>
+    <input class="input" password="{{!showPwd}}" placeholder="输入 WiFi 密码" value="{{wifiPwd}}" bindinput="onPwd"/>
+    <view class="pwd-toggle" bindtap="togglePwd">{{showPwd ? '隐藏' : '显示'}}密码</view>
+
+    <button class="btn-primary full mt-lg" loading="{{provisioning}}" bindtap="onStartProvision">开始配网</button>
+    <button class="btn-ghost full" bindtap="onCancelWifi">上一步</button>
+  </view>
+
+  <view wx:if="{{showWifiSheet}}" class="wifi-mask" bindtap="closeWifiSheet">
+    <view class="wifi-sheet" catchtap="stopSheetBubble">
+      <view class="wifi-sheet-head">
+        <text class="wifi-sheet-title">选择 Wi-Fi</text>
+        <text class="wifi-sheet-close" bindtap="closeWifiSheet">关闭</text>
+      </view>
+      <scroll-view scroll-y class="wifi-sheet-scroll" show-scrollbar="{{false}}">
+        <view
+          wx:for="{{wifiListEnriched}}"
+          wx:key="index"
+          class="wifi-sheet-row"
+          data-index="{{index}}"
+          bindtap="selectWifiRow"
+        >
+          <text class="wifi-sheet-ssid">{{item.SSID}}</text>
+          <view class="wifi-sig wifi-sig--{{item.sigLevel}}">
+            <view class="bar"/>
+            <view class="bar"/>
+            <view class="bar"/>
+            <view class="bar"/>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

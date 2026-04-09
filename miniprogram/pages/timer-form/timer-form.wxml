@@ -1,0 +1,65 @@
+<view class="page">
+  <view class="card form">
+    <view class="field">
+      <text class="lab">名称（可选）</text>
+      <input class="inp" placeholder="例如：每晚关灯" value="{{name}}" bindinput="onName"/>
+    </view>
+
+    <view class="field">
+      <text class="lab">重复</text>
+      <view class="repeat-row">
+        <view
+          wx:for="{{repeats}}"
+          wx:key="id"
+          class="chip {{repeat === item.id ? 'on' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="onRepeat"
+        >{{item.label}}</view>
+      </view>
+
+      <view wx:if="{{repeat === 'weekly'}}" class="sub-panel">
+        <text class="sub-lab">选择星期（可多选）</text>
+        <view class="week-row">
+          <view
+            wx:for="{{weekdays}}"
+            wx:key="value"
+            class="wchip {{item.on ? 'on' : ''}}"
+            data-v="{{item.value}}"
+            bindtap="onWeekTap"
+          >{{item.label}}</view>
+        </view>
+      </view>
+
+      <view wx:if="{{repeat === 'monthly'}}" class="sub-panel">
+        <text class="sub-lab">选择每月哪几天（可多选）</text>
+        <view class="month-grid">
+          <view
+            wx:for="{{monthdays}}"
+            wx:key="d"
+            class="mchip {{item.on ? 'on' : ''}}"
+            data-d="{{item.d}}"
+            bindtap="onMonthTap"
+          >{{item.d}}</view>
+        </view>
+        <text class="sub-hint">月末 29–31 日按当月实际天数执行。</text>
+      </view>
+    </view>
+
+    <view class="row2">
+      <view class="field half">
+        <text class="lab">执行时间</text>
+        <picker mode="time" value="{{time_local}}" bindchange="onTime">
+          <view class="picker-val">{{time_local}}</view>
+        </picker>
+      </view>
+      <view class="field half">
+        <text class="lab">动作</text>
+        <picker range="{{actionLabels}}" value="{{actionIndex}}" bindchange="onAction">
+          <view class="picker-val">{{actionLabels[actionIndex]}}</view>
+        </picker>
+      </view>
+    </view>
+  </view>
+
+  <button class="btn-save" loading="{{saving}}" bindtap="onSave">保存</button>
+</view>

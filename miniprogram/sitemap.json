@@ -1,0 +1,4 @@
+{
+  "desc": "SmartRelay",
+  "rules": [{ "action": "allow", "page": "*" }]
+}

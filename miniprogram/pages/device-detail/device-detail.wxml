@@ -1,0 +1,71 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="hint">加载中…</view>
+  <block wx:else>
+    <view class="card head">
+      <view class="head-row">
+        <view>
+          <text class="dev-name">{{device.name}}</text>
+          <text class="dev-id">{{device.device_id}}</text>
+        </view>
+        <view wx:if="{{device.online}}" class="badge badge-on">
+          <view class="dot dot-on"/>在线
+        </view>
+        <view wx:else class="badge badge-off">
+          <view class="dot dot-off"/>离线
+        </view>
+      </view>
+
+      <view class="switch-wrap">
+        <view
+          class="switch-track switch-track-wide {{device.relay_on ? 'on' : 'off'}}"
+          bindtap="onToggle"
+        >
+          <view class="switch-knob"/>
+        </view>
+        <text class="relay-label {{device.relay_on ? 'on' : ''}}">
+          继电器 · {{device.relay_on ? '开启' : '关闭'}}
+        </text>
+      </view>
+    </view>
+
+    <view class="card menu">
+      <navigator
+        class="menu-row border"
+        url="/pages/device-rename/device-rename?id={{device.device_id}}&name={{encodedName}}"
+      >
+        <text>修改备注名</text>
+        <text class="chev">›</text>
+      </navigator>
+      <navigator
+        class="menu-row border"
+        url="/pages/schedules/schedules?device_id={{device.device_id}}"
+      >
+        <text>定时任务</text>
+        <text class="sub">最多 10 条 ›</text>
+      </navigator>
+      <navigator
+        class="menu-row border"
+        url="/pages/logs/logs?device_id={{device.device_id}}"
+      >
+        <text>操作日志</text>
+        <text class="chev">›</text>
+      </navigator>
+      <navigator
+        class="menu-row"
+        url="/pages/firmware/firmware?device_id={{device.device_id}}"
+      >
+        <text>检查更新</text>
+        <text class="sub">当前 {{device.fw_version || '—'}} ›</text>
+      </navigator>
+    </view>
+
+    <view class="card menu">
+      <button class="share-btn" open-type="share" data-id="{{device.device_id}}">
+        <text>分享给微信好友</text>
+        <text class="chev">›</text>
+      </button>
+    </view>
+
+    <button class="btn-unbind" bindtap="onUnbind">解绑设备</button>
+  </block>
+</view>

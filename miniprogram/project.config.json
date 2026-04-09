@@ -1,0 +1,17 @@
+{
+  "miniprogramRoot": "./",
+  "projectname": "SmartRelay",
+  "description": "SmartRelay 微信小程序",
+  "appid": "wxbe5c849034ca3811",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.5.0",
+  "packOptions": { "ignore": [] },
+  "condition": {}
+}

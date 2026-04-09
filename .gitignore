@@ -1,5 +1,4 @@
 # 本地密钥与连接信息（勿提交）
-resource.md
 backend/.env
 *.local
 
@@ -15,3 +14,9 @@ __pycache__/
 node_modules/
 **/node_modules/
 dist/
+
+# PlatformIO 固件编译与依赖缓存
+firmware/.pio/
+
+# 后端本地上传文件
+uploads/

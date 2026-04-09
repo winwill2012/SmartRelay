@@ -1,0 +1,15 @@
+<view class="page">
+  <view class="card block">
+    <text class="lab">当前设备</text>
+    <text class="val mono">{{device_id}}</text>
+  </view>
+
+  <button class="btn-check" loading="{{loading}}" bindtap="onCheck">检查更新</button>
+
+  <view wx:if="{{result}}" class="card result">
+    <text class="lab">服务器最新版本</text>
+    <text class="ver">{{result.version || result.latest_version || '—'}}</text>
+    <text wx:if="{{result.release_notes}}" class="notes">{{result.release_notes}}</text>
+    <text wx:if="{{result.message}}" class="msg">{{result.message}}</text>
+  </view>
+</view>

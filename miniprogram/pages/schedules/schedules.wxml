@@ -1,0 +1,33 @@
+<view class="page">
+  <view class="hint-bar">最多 10 条定时 · 设备时区 {{tz}}</view>
+
+  <view wx:if="{{loading}}" class="hint">加载中…</view>
+  <view wx:elif="{{error}}" class="hint err">{{error}}</view>
+  <view wx:elif="{{list.length === 0}}" class="hint">暂无定时，点击下方添加</view>
+
+  <view wx:for="{{list}}" wx:key="id" class="card item">
+    <view class="item-head">
+      <text class="name">{{item.name || '定时'}}</text>
+      <switch
+        checked="{{item.enabled}}"
+        data-id="{{item.id}}"
+        bindchange="onToggle"
+        color="#2563eb"
+      />
+    </view>
+    <text class="detail">{{item.summary}}</text>
+    <view class="actions">
+      <navigator
+        class="link"
+        url="/pages/timer-form/timer-form?device_id={{device_id}}&schedule_id={{item.id}}"
+      >编辑</navigator>
+      <text class="del" data-id="{{item.id}}" bindtap="onDelete">删除</text>
+    </view>
+  </view>
+
+  <navigator
+    wx:if="{{list.length < 10}}"
+    class="btn-add"
+    url="/pages/timer-form/timer-form?device_id={{device_id}}"
+  >+ 新建定时</navigator>
+</view>

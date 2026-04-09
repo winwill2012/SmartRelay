@@ -1,0 +1,65 @@
+.page {
+  padding: 96rpx 48rpx 80rpx;
+}
+
+.brand {
+  text-align: center;
+  margin-bottom: 80rpx;
+}
+
+.logo {
+  display: inline-flex;
+  width: 128rpx;
+  height: 128rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 32rpx;
+  background: #2563eb;
+  color: #fff;
+  font-size: 48rpx;
+  font-weight: 800;
+  box-shadow: 0 16rpx 40rpx rgba(37, 99, 235, 0.3);
+}
+
+.title {
+  display: block;
+  margin-top: 48rpx;
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.wx-btn {
+  width: 100%;
+  border-radius: 24rpx;
+  background: #10b981;
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 500;
+  padding: 28rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  box-shadow: 0 8rpx 24rpx rgba(16, 185, 129, 0.35);
+}
+
+.wx-btn::after {
+  border: none;
+}
+
+.wx-ico {
+  font-size: 40rpx;
+}
+
+.legal {
+  margin-top: 48rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #94a3b8;
+  line-height: 1.6;
+}
+
+.link {
+  color: #2563eb;
+}

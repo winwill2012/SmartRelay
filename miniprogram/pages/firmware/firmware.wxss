@@ -1,0 +1,66 @@
+.page {
+  padding: 32rpx;
+}
+
+.block {
+  padding: 32rpx;
+}
+
+.lab {
+  font-size: 24rpx;
+  color: #64748b;
+  display: block;
+}
+
+.val {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 28rpx;
+  color: #0f172a;
+}
+
+.mono {
+  font-family: ui-monospace, monospace;
+}
+
+.btn-check {
+  margin-top: 32rpx;
+  width: 100%;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 24rpx;
+  padding: 28rpx 0;
+}
+
+.btn-check::after {
+  border: none;
+}
+
+.result {
+  margin-top: 32rpx;
+  padding: 32rpx;
+}
+
+.ver {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.notes {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.msg {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #64748b;
+}

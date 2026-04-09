@@ -1,0 +1,18 @@
+<view class="page">
+  <view class="brand">
+    <view class="logo">SR</view>
+    <text class="title">微联智能</text>
+  </view>
+
+  <button class="wx-btn" loading="{{loading}}" bindtap="onWxLogin">
+    <text class="wx-ico">💬</text>
+    <text>微信一键登录</text>
+  </button>
+
+  <view class="legal">
+    登录即表示同意
+    <text class="link">《用户协议》</text>
+    与
+    <text class="link">《隐私政策》</text>
+  </view>
+</view>

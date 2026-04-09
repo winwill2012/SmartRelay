@@ -1,0 +1,170 @@
+.page {
+  padding: 32rpx 32rpx 80rpx;
+}
+
+.steps {
+  padding: 32rpx 24rpx;
+}
+
+.step-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8rpx;
+}
+
+.step-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.bubble {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 9999rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bubble.done {
+  background: #10b981;
+  color: #fff;
+  box-shadow: 0 0 0 4rpx #d1fae5;
+}
+
+.bubble.active {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 0 0 4rpx #dbeafe;
+}
+
+.step-txt {
+  font-size: 22rpx;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.step-txt.ok {
+  color: #047857;
+}
+
+.step-txt.on {
+  color: #2563eb;
+}
+
+.step-line {
+  flex: 1;
+  height: 4rpx;
+  background: #e2e8f0;
+  margin-top: 32rpx;
+  min-width: 16rpx;
+}
+
+.step-line.on {
+  background: #6ee7b7;
+}
+
+.ok-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 48rpx;
+}
+
+.ok-ico {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 32rpx;
+  background: #d1fae5;
+  color: #047857;
+  font-size: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ok-title {
+  margin-top: 32rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.ok-sub {
+  margin-top: 12rpx;
+  font-size: 28rpx;
+  color: #64748b;
+}
+
+.info {
+  margin-top: 48rpx;
+  padding: 32rpx;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 24rpx;
+  padding: 12rpx 0;
+  font-size: 28rpx;
+}
+
+.k {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.v {
+  color: #0f172a;
+  text-align: right;
+  word-break: break-all;
+}
+
+.v.small {
+  font-size: 24rpx;
+}
+
+.mono {
+  font-family: ui-monospace, monospace;
+}
+
+.label {
+  display: block;
+  margin-top: 40rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #475569;
+}
+
+.mt {
+  margin-top: 32rpx;
+}
+
+.input {
+  margin-top: 12rpx;
+  padding: 24rpx;
+  border-radius: 24rpx;
+  border: 2rpx solid #e2e8f0;
+  font-size: 28rpx;
+  background: #fff;
+}
+
+.btn-primary {
+  margin-top: 48rpx;
+  width: 100%;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 24rpx;
+  padding: 28rpx 0;
+}
+
+.btn-primary::after {
+  border: none;
+}
