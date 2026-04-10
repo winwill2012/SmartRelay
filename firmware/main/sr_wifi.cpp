@@ -3,6 +3,8 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
+#include "esp_wifi_types.h"
+#include "esp_coexist.h"
 #include "esp_event.h"
 #include "esp_timer.h"
 #include <cstring>
@@ -10,14 +12,49 @@
 static const char *TAG = "sr_wifi";
 static bool s_ip_got;
 static esp_netif_t *s_sta_netif;
+/** 配网会话：影响 sta配置项与 sr_wifi_begin 是否强制 MIN_MODEM */
+static bool s_prov_session;
+
+static const char *reason_hint(uint8_t reason) {
+  switch (reason) {
+  case WIFI_REASON_NO_AP_FOUND:
+    return "未发现AP/扫描失败";
+  case WIFI_REASON_AUTH_FAIL:
+    return "认证失败(密码或路由器拒绝)";
+  case WIFI_REASON_ASSOC_FAIL:
+    return "关联被拒";
+  case WIFI_REASON_BEACON_TIMEOUT:
+    return "信标超时(信号差或干扰)";
+  case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
+  case WIFI_REASON_HANDSHAKE_TIMEOUT:
+    return "四次握手超时(密码错误/PMF等)";
+  case WIFI_REASON_CONNECTION_FAIL:
+    return "连接失败";
+  case WIFI_REASON_NO_AP_FOUND_W_COMPATIBLE_SECURITY:
+    return "无兼容加密方式的AP";
+  case WIFI_REASON_NO_AP_FOUND_IN_AUTHMODE_THRESHOLD:
+    return "authmode阈值过严(已改为兼容模式)";
+  case WIFI_REASON_NO_AP_FOUND_IN_RSSI_THRESHOLD:
+    return "RSSI阈值内无AP";
+  case WIFI_REASON_AUTH_EXPIRE:
+    return "认证过期(共存丢包/PMF/11n 与路由器不兼容常见)";
+  default:
+    return "";
+  }
+}
 
 static void on_wifi(void *arg, esp_event_base_t base, int32_t id, void *data) {
   (void)arg;
   (void)base;
-  (void)data;
   if (id == WIFI_EVENT_STA_DISCONNECTED) {
+    const wifi_event_sta_disconnected_t *ev = (const wifi_event_sta_disconnected_t *)data;
     s_ip_got = false;
-    ESP_LOGW(TAG, "STA disconnected");
+    const char *hint = ev ? reason_hint(ev->reason) : "";
+    if (hint[0]) {
+      ESP_LOGW(TAG, "STA disconnected reason=%u rssi=%d (%s)", ev ? ev->reason : 0, ev ? ev->rssi : 0, hint);
+    } else {
+      ESP_LOGW(TAG, "STA disconnected reason=%u rssi=%d", ev ? ev->reason : 0, ev ? ev->rssi : 0);
+    }
   }
 }
 
@@ -69,14 +106,63 @@ void sr_wifi_disconnect_clear(void) {
   esp_wifi_disconnect();
 }
 
+static void sta_config_common(wifi_config_t *w) {
+  /* OPEN：不设最低加密档，避免部分路由器在 mixed/WPA3 过渡下触发 NO_AP_IN_AUTHMODE_THRESHOLD(211) */
+  w->sta.threshold.authmode = WIFI_AUTH_OPEN;
+  if (s_prov_session) {
+    /* reason=2 AUTH_EXPIRE：配网时仍连着 BLE，偏向关闭 PMF、关 11kvr、拉长 listen，减少握手被 AP 判无效 */
+    w->sta.pmf_cfg.capable = false;
+    w->sta.pmf_cfg.required = false;
+    w->sta.listen_interval = 10;
+    w->sta.ft_enabled = false;
+    w->sta.btm_enabled = false;
+    w->sta.mbo_enabled = false;
+    w->sta.rm_enabled = false;
+  } else {
+    w->sta.pmf_cfg.capable = true;
+    w->sta.pmf_cfg.required = false;
+  }
+}
+
+static void prov_apply_sta_phy_compat(void) {
+  /* 先 11b/g（不配 11n），最大化与老旧/问题路由器兼容；C3 上避免部分 HT 协商异常 */
+  esp_err_t e = esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G);
+  if (e != ESP_OK) ESP_LOGW(TAG, "provision: set_protocol(BG) err=%d", (int)e);
+}
+
+void sr_wifi_provision_reapply_phy_after_wifi_reset(void) {
+  if (s_prov_session) {
+    prov_apply_sta_phy_compat();
+  }
+}
+
+void sr_wifi_provision_session_begin(void) {
+  s_prov_session = true;
+  if (esp_coex_preference_set(ESP_COEX_PREFER_WIFI) != ESP_OK) {
+    ESP_LOGW(TAG, "provision: coex prefer wifi failed");
+  }
+  prov_apply_sta_phy_compat();
+}
+
+void sr_wifi_provision_session_end(void) {
+  s_prov_session = false;
+  if (esp_coex_preference_set(ESP_COEX_PREFER_BALANCE) != ESP_OK) {
+    ESP_LOGW(TAG, "provision: coex balance failed");
+  }
+  esp_err_t e = esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N);
+  if (e != ESP_OK) ESP_LOGW(TAG, "provision end: set_protocol(BGN) err=%d", (int)e);
+}
+
 void sr_wifi_begin(const char *ssid, const char *pass) {
   wifi_config_t w = {};
   strncpy((char *)w.sta.ssid, ssid ? ssid : "", sizeof(w.sta.ssid) - 1);
   strncpy((char *)w.sta.password, pass ? pass : "", sizeof(w.sta.password) - 1);
-  w.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
   w.sta.bssid_set = false;
+  sta_config_common(&w);
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &w));
-  sr_wifi_set_modem_sleep(true);
+  if (!s_prov_session) {
+    sr_wifi_set_modem_sleep(true);
+  }
   esp_wifi_connect();
 }
 
@@ -84,14 +170,16 @@ void sr_wifi_begin_bssid(const char *ssid, const char *pass, int channel, const 
   wifi_config_t w = {};
   strncpy((char *)w.sta.ssid, ssid ? ssid : "", sizeof(w.sta.ssid) - 1);
   strncpy((char *)w.sta.password, pass ? pass : "", sizeof(w.sta.password) - 1);
-  w.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
   if (channel > 0) w.sta.channel = (uint8_t)channel;
   if (bssid) {
     memcpy(w.sta.bssid, bssid, 6);
     w.sta.bssid_set = true;
   }
+  sta_config_common(&w);
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &w));
-  sr_wifi_set_modem_sleep(true);
+  if (!s_prov_session) {
+    sr_wifi_set_modem_sleep(true);
+  }
   esp_wifi_connect();
 }
 
@@ -135,6 +223,11 @@ void sr_wifi_pick_bssid_for_ssid(const char *ssid, uint8_t bssid[6], int *channe
       *have = true;
     }
   }
+  if (!*have) {
+    ESP_LOGW(TAG, "scan: ssid 无匹配 AP (可见AP数=%u)", (unsigned)m);
+  } else {
+    ESP_LOGI(TAG, "scan: 选中 bssid 信号最强 rssi=%d ch=%d", best, *channel);
+  }
   free(rec);
 }
 
@@ -164,9 +257,6 @@ void sr_wifi_heal_tick(bool prov_running, bool prov_pending, int *heal_attempt,
   if ((ms - *last_heal_ms) < 12000) return;
 
   *last_heal_ms = ms;
-  (*heal_attempt)++;
-
-  if (on_mqtt_disconnect) on_mqtt_disconnect();
 
   char ssid[64] = {0}, pass[64] = {0};
   if (!sr_nvs_get_str("wifi_ssid", ssid, sizeof(ssid)) || !ssid[0]) {
@@ -174,6 +264,9 @@ void sr_wifi_heal_tick(bool prov_running, bool prov_pending, int *heal_attempt,
     return;
   }
   sr_nvs_get_str("wifi_pass", pass, sizeof(pass));
+
+  (*heal_attempt)++;
+  if (on_mqtt_disconnect) on_mqtt_disconnect();
 
   int phase = *heal_attempt % 3;
   if (phase == 1) {

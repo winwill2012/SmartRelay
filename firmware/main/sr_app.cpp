@@ -173,6 +173,17 @@ static void wait_ip_ms(uint32_t ms) {
   }
 }
 
+/** sr_wifi_begin / begin_bssid 内会打开 MIN_MODEM；配网阶段覆盖为 PS_NONE，减轻 C3 单天线与 BLE 并发时关联失败 */
+static void prov_connect_plain(const char *ssid, const char *pass) {
+  sr_wifi_begin(ssid, pass);
+  sr_wifi_set_modem_sleep(false);
+}
+
+static void prov_connect_bssid(const char *ssid, const char *pass, int channel, const uint8_t bssid[6]) {
+  sr_wifi_begin_bssid(ssid, pass, channel, bssid);
+  sr_wifi_set_modem_sleep(false);
+}
+
 static void run_wifi_provisioning(const char *ssid, const char *pass) {
   uint32_t seq = ++s_prov_seq;
   s_prov_running = true;
@@ -180,34 +191,44 @@ static void run_wifi_provisioning(const char *ssid, const char *pass) {
 
   sr_ble_stop_advertising();
   vTaskDelay(pdMS_TO_TICKS(120));
+  sr_ble_relax_conn_for_wifi_coex();
+  vTaskDelay(pdMS_TO_TICKS(300));
 
   esp_wifi_disconnect();
   vTaskDelay(pdMS_TO_TICKS(300));
-  sr_wifi_set_modem_sleep(true);
+  sr_wifi_provision_session_begin();
+  /* 先不关 PS：由每次 connect 后强制 NONE，避免未连上 AP 就进 modem sleep */
 
   uint8_t bssid[6];
   int ch = 0;
   bool have_b = false;
-  sr_wifi_pick_bssid_for_ssid(ssid, bssid, &ch, &have_b);
 
-  log_prov(seq, "WIFI", "begin(ssid,pass)");
-  sr_wifi_begin(ssid, pass);
-  wait_ip_ms(45000);
+  log_prov(seq, "WIFI", "begin #1 (no pre-scan, coexist)");
+  prov_connect_plain(ssid, pass);
+  wait_ip_ms(40000);
+
+  if (!sr_wifi_has_ip()) {
+    log_prov(seq, "WIFI", "scan for bssid");
+    esp_wifi_disconnect();
+    vTaskDelay(pdMS_TO_TICKS(400));
+    sr_wifi_pick_bssid_for_ssid(ssid, bssid, &ch, &have_b);
+    vTaskDelay(pdMS_TO_TICKS(200));
+  }
 
   if (!sr_wifi_has_ip() && have_b && ch > 0) {
     log_prov(seq, "WIFI", "retry#2 bssid");
     esp_wifi_disconnect();
     vTaskDelay(pdMS_TO_TICKS(400));
-    sr_wifi_begin_bssid(ssid, pass, ch, bssid);
-    wait_ip_ms(45000);
+    prov_connect_bssid(ssid, pass, ch, bssid);
+    wait_ip_ms(40000);
   }
 
   if (!sr_wifi_has_ip()) {
     log_prov(seq, "WIFI", "retry#3 plain");
     esp_wifi_disconnect();
     vTaskDelay(pdMS_TO_TICKS(400));
-    sr_wifi_begin(ssid, pass);
-    wait_ip_ms(45000);
+    prov_connect_plain(ssid, pass);
+    wait_ip_ms(40000);
   }
 
   if (!sr_wifi_has_ip()) {
@@ -216,8 +237,9 @@ static void run_wifi_provisioning(const char *ssid, const char *pass) {
     vTaskDelay(pdMS_TO_TICKS(250));
     esp_wifi_start();
     vTaskDelay(pdMS_TO_TICKS(250));
-    sr_wifi_begin(ssid, pass);
-    wait_ip_ms(30000);
+    sr_wifi_provision_reapply_phy_after_wifi_reset();
+    prov_connect_plain(ssid, pass);
+    wait_ip_ms(35000);
   }
 
   cJSON *res = cJSON_CreateObject();
@@ -263,7 +285,7 @@ static void run_wifi_provisioning(const char *ssid, const char *pass) {
   }
 
   if (sr_wifi_has_ip()) {
-    vTaskDelay(pdMS_TO_TICKS(120));
+    vTaskDelay(pdMS_TO_TICKS(220));
     sr_ble_deinit_after_provision();
     s_ble_runtime_active = false;
     sr_wifi_set_modem_sleep(false);
@@ -272,6 +294,7 @@ static void run_wifi_provisioning(const char *ssid, const char *pass) {
     sr_ble_start_advertising();
     log_prov(seq, "END", "failed restart adv");
   }
+  sr_wifi_provision_session_end();
   s_prov_running = false;
 }
 

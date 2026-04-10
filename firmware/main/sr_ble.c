@@ -36,6 +36,8 @@ static uint16_t s_att_mtu = 23;
 static char s_gap_name[32];
 static sr_ble_write_fn_t s_wr;
 static bool s_stack_inited;
+/** 配网成功后主动 terminate + deinit：禁止在 DISCONNECT 里再启广播，否则与 nimble_port_stop 竞态，常见 ble_gap_adv_set_fields rc=30 (EALREADY) */
+static bool s_teardown_silent;
 
 static int sr_gatt_access(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt,
                           void *arg);
@@ -134,11 +136,16 @@ static int sr_gap_event(struct ble_gap_event *event, void *arg) {
   case BLE_GAP_EVENT_DISCONNECT:
     ESP_LOGI(TAG, "disconnect reason=%d", event->disconnect.reason);
     s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
-    sr_advertise();
+    if (!s_teardown_silent) {
+      sr_advertise();
+    }
     return 0;
   case BLE_GAP_EVENT_MTU:
     s_att_mtu = event->mtu.value;
     ESP_LOGI(TAG, "mtu=%d", s_att_mtu);
+    return 0;
+  case BLE_GAP_EVENT_CONN_UPDATE:
+    ESP_LOGI(TAG, "conn_update status=%d", event->conn_update.status);
     return 0;
   case BLE_GAP_EVENT_ADV_COMPLETE:
     sr_advertise();
@@ -146,6 +153,19 @@ static int sr_gap_event(struct ble_gap_event *event, void *arg) {
   default:
     return 0;
   }
+}
+
+void sr_ble_relax_conn_for_wifi_coex(void) {
+  if (s_conn_handle == BLE_HS_CONN_HANDLE_NONE) return;
+  /* itvl 单位为 1.25ms；拉大间隔减少 BLE 射频占用，便于 STA 完成 Auth/Assoc */
+  struct ble_gap_upd_params u = {
+      .itvl_min = 160,
+      .itvl_max = 320,
+      .latency = 0,
+      .supervision_timeout = 500,
+  };
+  int rc = ble_gap_update_params(s_conn_handle, &u);
+  if (rc != 0) ESP_LOGW(TAG, "relax_conn gap_update_params rc=%d", rc);
 }
 
 static int sr_gatt_access(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt,
@@ -279,10 +299,11 @@ void sr_ble_notify_json(const char *json) {
 
 void sr_ble_deinit_after_provision(void) {
   if (!s_stack_inited) return;
+  s_teardown_silent = true;
   ble_gap_adv_stop();
   if (s_conn_handle != BLE_HS_CONN_HANDLE_NONE) {
     ble_gap_terminate(s_conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-    vTaskDelay(pdMS_TO_TICKS(150));
+    vTaskDelay(pdMS_TO_TICKS(200));
     s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
   }
   nimble_port_stop();
@@ -292,4 +313,5 @@ void sr_ble_deinit_after_provision(void) {
   }
   s_stack_inited = false;
   s_tx_val_handle = 0;
+  s_teardown_silent = false;
 }

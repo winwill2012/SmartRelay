@@ -446,9 +446,8 @@ function provisionWifi(deviceId, ssid, password, timeoutMs = 180000) {
               finish(new Error(t))
               return
             }
-            if (msg.device_id) {
-              finish(null, msg)
-            }
+            /* 固件成功时应带 device_id；若缺省仍结束 loading，避免一直「配网中」 */
+            finish(null, msg)
             return
           }
           if (msg.type === 'device.info' && msg.device_id) {

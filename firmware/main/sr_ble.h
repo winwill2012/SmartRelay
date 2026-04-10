@@ -17,6 +17,8 @@ void sr_ble_notify_json(const char *json);
 void sr_ble_stop_advertising(void);
 void sr_ble_start_advertising(void);
 bool sr_ble_stack_ready(void);
+/** 配网连 Wi-Fi 前调用：请求拉大连接间隔，减轻 C3 单天线与 Wi-Fi 并发时 reason=2 */
+void sr_ble_relax_conn_for_wifi_coex(void);
 /** 配网成功后释放 BLE 控制器（与 Arduino NimBLE deinit 行为一致，利于 WiFi 独占射频） */
 void sr_ble_deinit_after_provision(void);
 
