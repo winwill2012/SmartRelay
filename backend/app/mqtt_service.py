@@ -13,7 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db import AsyncSessionLocal
-from app.models import Device, DeviceOperationLog, LogSource
+from app.models import (
+    Device,
+    DeviceOperationLog,
+    LogSource,
+    RepeatType,
+    Schedule,
+    UserDevice,
+    UserNotification,
+)
 from app.command_service import cache_command_ack
 from app.security import hash_password
 
@@ -87,6 +95,19 @@ async def _handle_report(session: AsyncSession, device: Device, payload: dict[st
         sa = payload.get("schedule_action")
         if not isinstance(sa, str) or not sa:
             sa = "on" if payload.get("relay_on") is True else "off"
+        sid_raw = payload.get("schedule_id")
+        sid_int: Optional[int] = None
+        sch: Optional[Schedule] = None
+        if sid_raw is not None:
+            try:
+                sid_int = int(sid_raw)
+            except (TypeError, ValueError):
+                sid_int = None
+            if sid_int is not None:
+                r_sch = await session.execute(
+                    select(Schedule).where(Schedule.id == sid_int, Schedule.device_id == device.id)
+                )
+                sch = r_sch.scalar_one_or_none()
         log = DeviceOperationLog(
             device_id=device.id,
             user_id=None,
@@ -99,6 +120,58 @@ async def _handle_report(session: AsyncSession, device: Device, payload: dict[st
             created_at=datetime.now(),
         )
         session.add(log)
+        if sch and sch.repeat_type == RepeatType.once:
+            sch.enabled = False
+
+        action_cn = "打开" if sa == "on" else "关闭"
+        sch_name = (sch.name or "").strip() if sch else ""
+        sch_name_disp = sch_name if sch_name else "未命名"
+
+        time_str = ""
+        repeat_cn = ""
+        if sch:
+            tl = sch.time_local
+            time_str = f"{tl.hour:02d}:{tl.minute:02d}"
+            repeat_cn = {
+                RepeatType.once: "一次",
+                RepeatType.daily: "每天",
+                RepeatType.weekly: "每周",
+                RepeatType.monthly: "每月",
+            }.get(sch.repeat_type, "")
+
+        r_uds = await session.execute(select(UserDevice).where(UserDevice.device_id == device.id))
+        now_n = datetime.now()
+        for ud in r_uds.scalars().all():
+            remark = (ud.remark or "").strip() or device.device_id
+            if sch and time_str:
+                body = (
+                    f"设备「{remark}」· 任务备注「{sch_name_disp}」· "
+                    f"设定时间 {time_str}（{repeat_cn}）· 已执行：{action_cn}"
+                )
+            else:
+                body = (
+                    f"设备「{remark}」· 任务备注「{sch_name_disp}」· "
+                    f"已执行：{action_cn}（未匹配到定时配置详情）"
+                )
+
+            session.add(
+                UserNotification(
+                    user_id=ud.user_id,
+                    category="schedule.run",
+                    title="定时任务已执行",
+                    body=body[:512],
+                    extra={
+                        "device_id": device.device_id,
+                        "schedule_id": sid_int,
+                        "action": sa,
+                        "schedule_name": sch_name or None,
+                        "time_local": time_str or None,
+                        "repeat_type": sch.repeat_type.value if sch else None,
+                    },
+                    is_read=False,
+                    created_at=now_n,
+                )
+            )
     await session.commit()
 
 

@@ -1,8 +1,13 @@
 const auth = require('../../utils/auth.js')
 const api = require('../../utils/api.js')
 const { uuid } = require('../../utils/uuid.js')
+const feedback = require('../../utils/feedback.js')
 
 function formatNextScheduleLine(d) {
+  const ns0 = d.next_schedule
+  if (ns0 && typeof ns0 === 'object' && ns0.enabled === false) {
+    return ''
+  }
   if (d.next_schedule_summary != null && String(d.next_schedule_summary).trim() !== '') {
     return String(d.next_schedule_summary)
   }
@@ -119,6 +124,7 @@ Page({
     const on = e.currentTarget.dataset.on
     if (!id) return
     const next = !on
+    feedback.uiTapFeedback()
     wx.showLoading({ title: '指令发送…', mask: true })
     try {
       const client_cmd_id = uuid()

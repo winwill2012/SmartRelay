@@ -1,18 +1,32 @@
 <view class="page">
-  <view class="brand">
-    <view class="logo">SR</view>
-    <text class="title">微联智能</text>
+  <view class="top">
+    <view class="brand">
+      <view class="logo-ring">
+        <view class="logo">SR</view>
+      </view>
+      <text class="title">微联智能</text>
+      <text class="subtitle">SmartRelay 智能开关</text>
+    </view>
   </view>
 
-  <button class="wx-btn" loading="{{loading}}" bindtap="onWxLogin">
-    <text class="wx-ico">💬</text>
-    <text>微信一键登录</text>
-  </button>
+  <view class="bottom">
+    <button class="wx-btn" loading="{{loading}}" bindtap="onWxLogin">
+      <text class="wx-btn-label">微信一键登录</text>
+    </button>
 
-  <view class="legal">
-    登录即表示同意
-    <text class="link">《用户协议》</text>
-    与
-    <text class="link">《隐私政策》</text>
+    <view class="legal">
+      <text class="legal-line">登录即表示同意</text>
+      <navigator
+        class="legal-link"
+        url="/pages/user-agreement/user-agreement"
+        hover-class="legal-link-hover"
+      >《用户协议》</navigator>
+      <text class="legal-line">与</text>
+      <navigator
+        class="legal-link"
+        url="/pages/privacy-policy/privacy-policy"
+        hover-class="legal-link-hover"
+      >《隐私政策》</navigator>
+    </view>
   </view>
 </view>

@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.db import AsyncSessionLocal
-from app.db_migrations import ensure_devices_relay_on
+from app.db_migrations import ensure_devices_relay_on, ensure_user_notifications_table
 from app.errors import INTERNAL
 from app.mqtt_service import mqtt_ingest_loop, mqtt_publisher
 from app.routers import api_router
@@ -28,6 +28,7 @@ async def lifespan(app: FastAPI):
     os.makedirs(settings.upload_dir, exist_ok=True)
     async with AsyncSessionLocal() as session:
         await ensure_devices_relay_on(session)
+        await ensure_user_notifications_table(session)
         await ensure_default_admin(session)
 
     stop = asyncio.Event()

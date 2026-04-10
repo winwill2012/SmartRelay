@@ -17,6 +17,32 @@
   margin-bottom: 20rpx;
 }
 
+.card.row.row--schedule {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border: 2rpx solid #6ee7b7;
+}
+
+/* 用户下发：开 = 偏蓝，关 = 偏橙，与定时（绿）区分 */
+.card.row.row--manual-on {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  border: 2rpx solid #38bdf8;
+}
+
+.card.row.row--manual-off {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border: 2rpx solid #fdba74;
+}
+
+.card.row.row--manual {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 2rpx solid #93c5fd;
+}
+
+.card.row.row--default {
+  background: #fff;
+  border: 2rpx solid #f1f5f9;
+}
+
 .row-top {
   display: flex;
   justify-content: space-between;

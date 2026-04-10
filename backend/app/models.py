@@ -133,6 +133,23 @@ class Schedule(Base):
     device: Mapped["Device"] = relationship(back_populates="schedules")
 
 
+class UserNotification(Base):
+    """用户站内通知（如定时任务执行结果），非微信模板消息。"""
+
+    __tablename__ = "user_notifications"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    title: Mapped[str] = mapped_column(String(128), nullable=False)
+    body: Mapped[str] = mapped_column(String(512), nullable=False)
+    extra: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
+
+    __table_args__ = (Index("idx_un_user_time", "user_id", "created_at"),)
+
+
 class DeviceOperationLog(Base):
     __tablename__ = "device_operation_logs"
 

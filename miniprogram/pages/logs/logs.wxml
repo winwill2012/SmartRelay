@@ -3,7 +3,7 @@
   <view wx:elif="{{error}}" class="hint err">{{error}}</view>
   <view wx:elif="{{list.length === 0}}" class="hint">暂无日志</view>
   <view wx:else>
-    <view wx:for="{{list}}" wx:key="id" class="card row">
+    <view wx:for="{{list}}" wx:key="id" class="card row row--{{item.rowVariant}}">
       <view class="row-top">
         <text class="act">{{item.actionLabel}}</text>
         <text class="time">{{item.timeText}}</text>

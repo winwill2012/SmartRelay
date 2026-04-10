@@ -206,6 +206,22 @@ function getNotifications() {
   return request({ url: '/notifications', method: 'GET' })
 }
 
+function patchNotificationRead(notificationId) {
+  return request({
+    url: `/notifications/${encodeURIComponent(notificationId)}/read`,
+    method: 'PATCH',
+    data: {}
+  })
+}
+
+function deleteNotification(notificationId) {
+  return request({
+    url: `/notifications/${encodeURIComponent(notificationId)}`,
+    method: 'DELETE',
+    data: {}
+  })
+}
+
 function deviceClaim(payload) {
   return request({ url: '/device/claim', method: 'POST', data: payload })
 }
@@ -231,5 +247,7 @@ module.exports = {
   getShares,
   otaCheck,
   getNotifications,
+  patchNotificationRead,
+  deleteNotification,
   deviceClaim
 }

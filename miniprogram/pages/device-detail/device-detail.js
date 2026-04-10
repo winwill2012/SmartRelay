@@ -1,5 +1,6 @@
 const api = require('../../utils/api.js')
 const { uuid } = require('../../utils/uuid.js')
+const feedback = require('../../utils/feedback.js')
 const app = getApp()
 
 function pickDevice(list, id) {
@@ -62,6 +63,7 @@ Page({
     const d = this.data.device
     if (!d.device_id) return
     const next = !d.relay_on
+    feedback.uiTapFeedback()
     wx.showLoading({ title: '发送中…', mask: true })
     try {
       await api.postCommand(d.device_id, {

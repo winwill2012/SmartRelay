@@ -1,0 +1,13 @@
+<view class="page">
+  <view class="card">
+    <text class="app-name">SmartRelay</text>
+    <text class="app-tag">智能开关</text>
+    <view class="ver-row">
+      <text class="ver-label">小程序版本</text>
+      <text class="ver-value">{{version}}</text>
+    </view>
+    <view class="copy-block">
+      <text class="copy">Copyright © 2026.微联编程 All rights reserved.</text>
+    </view>
+  </view>
+</view>

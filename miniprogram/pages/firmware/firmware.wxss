@@ -4,6 +4,7 @@
 
 .block {
   padding: 32rpx;
+  background: linear-gradient(180deg, #fafbff 0%, #fff 55%);
 }
 
 .lab {
@@ -26,11 +27,14 @@
 .btn-check {
   margin-top: 32rpx;
   width: 100%;
-  background: #2563eb;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%);
   color: #fff;
   font-weight: 600;
+  font-size: 30rpx;
   border-radius: 24rpx;
-  padding: 28rpx 0;
+  line-height: 88rpx;
+  padding: 0;
+  box-shadow: 0 12rpx 28rpx rgba(37, 99, 235, 0.28);
 }
 
 .btn-check::after {

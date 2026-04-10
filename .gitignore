@@ -1,9 +1,13 @@
+# 小程序勿将大图放在包内（会超主包/资源体积审核）
+miniprogram/头像.jpg
+
 # 本地密钥与连接信息（勿提交）
 backend/.env
 *.local
 
 # 工具与 IDE
 .cursor/
+
 
 # Python
 .venv/

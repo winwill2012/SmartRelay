@@ -76,13 +76,30 @@ function formatLogDetail(action, detail) {
   }
 }
 
+function logRowVariant(action, detail) {
+  if (action === 'schedule.run') return 'schedule'
+  if (action === 'command.sent' && detail && typeof detail === 'object') {
+    const t = detail.type
+    if (t === 'relay.set' || t === 'relay.toggle') {
+      const p = detail.payload || {}
+      if (typeof p.on === 'boolean') {
+        return p.on ? 'manual-on' : 'manual-off'
+      }
+      return 'manual'
+    }
+  }
+  return 'default'
+}
+
 function mapLogItem(x) {
   const action = x.action || ''
+  const detail = x.detail
   return {
     id: x.id,
     actionLabel: ACTION_ZH[action] || action || '操作',
-    detailText: formatLogDetail(action, x.detail),
-    timeText: formatLogTime(x.created_at)
+    detailText: formatLogDetail(action, detail),
+    timeText: formatLogTime(x.created_at),
+    rowVariant: logRowVariant(action, detail)
   }
 }
 

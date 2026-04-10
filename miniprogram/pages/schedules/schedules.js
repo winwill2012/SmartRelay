@@ -24,7 +24,6 @@ function dayLabel(d) {
 Page({
   data: {
     device_id: '',
-    tz: 'Asia/Shanghai',
     loading: true,
     error: '',
     list: []

@@ -1,66 +1,122 @@
 .page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f3f6fb;
+}
+
+/* 上半：纯色渐变蓝底，白字保证可读 */
+.top {
+  flex-shrink: 0;
   padding: 96rpx 48rpx 80rpx;
+  background: linear-gradient(180deg, #1e3a8a 0%, #1d4ed8 55%, #2563eb 100%);
 }
 
 .brand {
   text-align: center;
-  margin-bottom: 80rpx;
+}
+
+.logo-ring {
+  display: inline-flex;
+  padding: 8rpx;
+  border-radius: 36rpx;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 12rpx 40rpx rgba(0, 0, 0, 0.15);
 }
 
 .logo {
-  display: inline-flex;
+  display: flex;
   width: 128rpx;
   height: 128rpx;
   align-items: center;
   justify-content: center;
-  border-radius: 32rpx;
-  background: #2563eb;
-  color: #fff;
-  font-size: 48rpx;
+  border-radius: 28rpx;
+  background: #fff;
+  color: #1d4ed8;
+  font-size: 46rpx;
   font-weight: 800;
-  box-shadow: 0 16rpx 40rpx rgba(37, 99, 235, 0.3);
+  letter-spacing: -0.04em;
 }
 
 .title {
   display: block;
-  margin-top: 48rpx;
-  font-size: 40rpx;
-  font-weight: 600;
-  color: #0f172a;
+  margin-top: 40rpx;
+  font-size: 42rpx;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+}
+
+/* 下半：浅灰底，正文深灰、链接深蓝 */
+.bottom {
+  flex: 1;
+  padding: 48rpx 48rpx calc(48rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
 }
 
 .wx-btn {
   width: 100%;
   border-radius: 24rpx;
-  background: #10b981;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 50%, #15803d 100%);
   color: #fff;
   font-size: 30rpx;
-  font-weight: 500;
-  line-height: 84rpx;
+  font-weight: 600;
+  line-height: 88rpx;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16rpx;
-  box-shadow: 0 8rpx 24rpx rgba(16, 185, 129, 0.35);
+  box-shadow: 0 12rpx 32rpx rgba(22, 163, 74, 0.32),
+    0 0 0 1rpx rgba(255, 255, 255, 0.2) inset;
 }
 
 .wx-btn::after {
   border: none;
 }
 
-.wx-ico {
-  font-size: 40rpx;
+.wx-btn-label {
+  letter-spacing: 0.02em;
 }
 
 .legal {
   margin-top: 48rpx;
-  text-align: center;
+  padding: 28rpx 24rpx;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  row-gap: 8rpx;
+  column-gap: 6rpx;
   font-size: 24rpx;
-  color: #94a3b8;
   line-height: 1.6;
+  background: #fff;
+  border-radius: 20rpx;
+  border: 2rpx solid #e2e8f0;
 }
 
-.link {
-  color: #2563eb;
+.legal-line {
+  color: #475569;
+  font-size: 24rpx;
+}
+
+.legal-link {
+  display: inline;
+  font-size: 24rpx;
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4rpx;
+}
+
+.legal-link-hover {
+  opacity: 0.75;
 }

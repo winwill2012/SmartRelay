@@ -1,11 +1,12 @@
 <view class="page">
-  <view wx:if="{{!loggedIn}}" class="empty-wrap">
+  <view class="ambient-top"/>
+  <view wx:if="{{!loggedIn}}" class="empty-wrap layer">
     <text class="empty-title">登录以绑定设备</text>
     <text class="empty-sub">登录后可添加设备并远程控制</text>
     <navigator url="/pages/login/login" class="btn-login">去登录</navigator>
   </view>
 
-  <view wx:else class="main">
+  <view wx:else class="main layer">
     <view class="filters" aria-role="toolbar">
       <view
         wx:for="{{filterModes}}"
@@ -40,7 +41,9 @@
             <view class="device-main-inner">
               <view class="device-text-block">
                 <text class="device-name">{{item.name}}</text>
-                <view wx:if="{{item.next_schedule_summary}}" class="schedule-line">{{item.next_schedule_summary}}</view>
+                <view wx:if="{{item.next_schedule_summary}}" class="schedule-slot">
+                  <text class="schedule-line">{{item.next_schedule_summary}}</text>
+                </view>
               </view>
               <view class="device-badge-wrap">
                 <view wx:if="{{item.online}}" class="badge badge-on">
@@ -69,7 +72,7 @@
     wx:if="{{loggedIn}}"
     class="fab-add"
     url="/pages/provision/provision"
-    hover-class="fab-add-hover"
+    hover-class="tap-fade"
   >
     <text class="fab-plus">+</text>
   </navigator>

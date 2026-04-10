@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js')
+const feedback = require('../../utils/feedback.js')
 
 const REPEATS = [
   { id: 'once', label: '一次' },
@@ -18,6 +19,13 @@ function buildWeekdays() {
     { value: 0, label: '周日', on: false }
   ]
 }
+
+function pad2(n) {
+  return n < 10 ? '0' + n : '' + n
+}
+
+const HOURS = Array.from({ length: 24 }, (_, i) => pad2(i))
+const MINUTES = Array.from({ length: 60 }, (_, i) => pad2(i))
 
 function buildMonthdays(selected) {
   const set = {}
@@ -41,6 +49,12 @@ Page({
     weekdays: buildWeekdays(),
     monthdays: buildMonthdays([]),
     time_local: '22:00',
+    hours: HOURS,
+    minutes: MINUTES,
+    showTimeModal: false,
+    timePickerValue: [22, 0],
+    showActionModal: false,
+    actionPickerValue: [0],
     actionLabels: ['关闭', '打开'],
     actionIndex: 0,
     saving: false
@@ -72,12 +86,13 @@ Page({
         const row = weekdays.find((w) => w.value === v)
         if (row) row.on = true
       })
+      const tl = (s.time_local || '08:00').slice(0, 5)
       this.setData({
         name: s.name || '',
         repeat,
         weekdays,
         monthdays: buildMonthdays(s.monthdays || []),
-        time_local: (s.time_local || '08:00').slice(0, 5),
+        time_local: tl,
         actionIndex
       })
     } catch (e) {
@@ -110,12 +125,69 @@ Page({
     this.setData({ monthdays })
   },
 
-  onTime(e) {
-    this.setData({ time_local: e.detail.value })
+  noop() {},
+
+  openTimePicker() {
+    feedback.uiTapFeedback()
+    this.setData({ showActionModal: false })
+    const parts = (this.data.time_local || '08:00').split(':')
+    let h = parseInt(parts[0], 10)
+    let m = parseInt(parts[1], 10)
+    if (Number.isNaN(h) || h < 0 || h > 23) h = 8
+    if (Number.isNaN(m) || m < 0 || m > 59) m = 0
+    this.setData({
+      showTimeModal: true,
+      timePickerValue: [h, m]
+    })
   },
 
-  onAction(e) {
-    this.setData({ actionIndex: Number(e.detail.value) })
+  onTimePickerChange(e) {
+    feedback.playScrollTick()
+    this.setData({ timePickerValue: e.detail.value })
+  },
+
+  onTimeModalCancel() {
+    this.setData({ showTimeModal: false })
+  },
+
+  onTimeModalConfirm() {
+    const [hi, mi] = this.data.timePickerValue
+    const h = HOURS[hi] || '00'
+    const m = MINUTES[mi] || '00'
+    feedback.uiTapFeedback()
+    this.setData({
+      time_local: `${h}:${m}`,
+      showTimeModal: false
+    })
+  },
+
+  openActionPicker() {
+    feedback.uiTapFeedback()
+    this.setData({ showTimeModal: false })
+    this.setData({
+      showActionModal: true,
+      actionPickerValue: [this.data.actionIndex]
+    })
+  },
+
+  onActionPickerChange(e) {
+    feedback.playScrollTick()
+    this.setData({ actionPickerValue: e.detail.value })
+  },
+
+  onActionModalCancel() {
+    this.setData({ showActionModal: false })
+  },
+
+  onActionModalConfirm() {
+    const idx = this.data.actionPickerValue[0]
+    const actionIndex =
+      idx === 0 || idx === 1 ? idx : this.data.actionIndex
+    feedback.uiTapFeedback()
+    this.setData({
+      actionIndex,
+      showActionModal: false
+    })
   },
 
   async onSave() {

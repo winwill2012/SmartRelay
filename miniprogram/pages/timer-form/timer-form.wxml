@@ -1,12 +1,18 @@
-<view class="page">
-  <view class="card form">
-    <view class="field">
-      <text class="lab">名称（可选）</text>
-      <input class="inp" placeholder="例如：每晚关灯" value="{{name}}" bindinput="onName"/>
+<view class="timer-page">
+  <view class="page-bg"/>
+  <view class="form-wrap card">
+    <view class="form-head">
+      <text class="form-kicker">Schedule</text>
+      <text class="form-title">定时规则</text>
     </view>
 
     <view class="field">
-      <text class="lab">重复</text>
+      <text class="lab">名称<text class="lab-opt">（可选）</text></text>
+      <input class="inp" placeholder="例如：每晚关灯" placeholder-class="inp-ph" value="{{name}}" bindinput="onName"/>
+    </view>
+
+    <view class="field">
+      <text class="lab">重复周期</text>
       <view class="repeat-row">
         <view
           wx:for="{{repeats}}"
@@ -48,18 +54,67 @@
     <view class="row2">
       <view class="field half">
         <text class="lab">执行时间</text>
-        <picker mode="time" value="{{time_local}}" bindchange="onTime">
-          <view class="picker-val">{{time_local}}</view>
-        </picker>
+        <view class="picker-tile picker-tile--time" bindtap="openTimePicker">
+          <view class="picker-tile-main">
+            <text class="picker-tile-val mono">{{time_local}}</text>
+            <text class="picker-tile-hint">点击选择</text>
+          </view>
+          <text class="picker-tile-chev">›</text>
+        </view>
       </view>
       <view class="field half">
         <text class="lab">动作</text>
-        <picker range="{{actionLabels}}" value="{{actionIndex}}" bindchange="onAction">
-          <view class="picker-val">{{actionLabels[actionIndex]}}</view>
-        </picker>
+        <view class="picker-tile picker-tile--time" bindtap="openActionPicker">
+          <view class="picker-tile-main">
+            <text class="picker-tile-val">{{actionLabels[actionIndex]}}</text>
+            <text class="picker-tile-hint">点击选择</text>
+          </view>
+          <text class="picker-tile-chev">›</text>
+        </view>
       </view>
     </view>
   </view>
 
-  <button class="btn-save" loading="{{saving}}" bindtap="onSave">保存</button>
+  <button class="btn-save" loading="{{saving}}" bindtap="onSave">保存定时</button>
+
+  <view wx:if="{{showTimeModal}}" class="time-modal-mask" catchtap="onTimeModalCancel">
+    <view class="time-modal-sheet" catchtap="noop">
+      <view class="time-modal-bar">
+        <text class="time-modal-btn" bindtap="onTimeModalCancel">取消</text>
+        <text class="time-modal-title">选择时间</text>
+        <text class="time-modal-btn time-modal-btn--ok" bindtap="onTimeModalConfirm">完成</text>
+      </view>
+      <picker-view
+        class="time-picker-view"
+        value="{{timePickerValue}}"
+        bindchange="onTimePickerChange"
+      >
+        <picker-view-column>
+          <view wx:for="{{hours}}" wx:key="*this" class="time-pv-item">{{item}}</view>
+        </picker-view-column>
+        <picker-view-column>
+          <view wx:for="{{minutes}}" wx:key="*this" class="time-pv-item">{{item}}</view>
+        </picker-view-column>
+      </picker-view>
+    </view>
+  </view>
+
+  <view wx:if="{{showActionModal}}" class="time-modal-mask" catchtap="onActionModalCancel">
+    <view class="time-modal-sheet" catchtap="noop">
+      <view class="time-modal-bar">
+        <text class="time-modal-btn" bindtap="onActionModalCancel">取消</text>
+        <text class="time-modal-title">执行动作</text>
+        <text class="time-modal-btn time-modal-btn--ok" bindtap="onActionModalConfirm">完成</text>
+      </view>
+      <picker-view
+        class="time-picker-view action-picker-view"
+        value="{{actionPickerValue}}"
+        bindchange="onActionPickerChange"
+      >
+        <picker-view-column>
+          <view wx:for="{{actionLabels}}" wx:key="*this" class="time-pv-item">{{item}}</view>
+        </picker-view-column>
+      </picker-view>
+    </view>
+  </view>
 </view>

@@ -1,0 +1,55 @@
+.page {
+  min-height: 100vh;
+  padding: 32rpx;
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #e8f0fe 0%, #f3f6fb 50%, #f3f6fb 100%);
+}
+
+.card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 36rpx 32rpx;
+  border: 2rpx solid #e2e8f0;
+  box-shadow: 0 12rpx 32rpx rgba(15, 23, 42, 0.06);
+}
+
+.lead {
+  display: block;
+  font-size: 28rpx;
+  color: #475569;
+  line-height: 1.7;
+}
+
+.email-box {
+  margin-top: 36rpx;
+  padding: 28rpx 24rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 2rpx solid #93c5fd;
+}
+
+.email {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1d4ed8;
+  letter-spacing: 0.02em;
+  word-break: break-all;
+}
+
+.copy-tag {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.hint {
+  display: block;
+  margin-top: 28rpx;
+  font-size: 24rpx;
+  color: #94a3b8;
+  line-height: 1.55;
+}

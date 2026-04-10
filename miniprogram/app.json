@@ -12,19 +12,23 @@
     "pages/firmware/firmware",
     "pages/shares/shares",
     "pages/notifications/notifications",
-    "pages/device-rename/device-rename"
+    "pages/device-rename/device-rename",
+    "pages/privacy-policy/privacy-policy",
+    "pages/user-agreement/user-agreement",
+    "pages/help-feedback/help-feedback",
+    "pages/about/about"
   ],
   "window": {
     "navigationBarTitleText": "SmartRelay",
-    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarBackgroundColor": "#f8fafc",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#f5f7fa"
+    "backgroundColor": "#f3f6fb"
   },
   "tabBar": {
     "color": "#8a8f99",
     "selectedColor": "#2563eb",
     "backgroundColor": "#ffffff",
-    "borderStyle": "black",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/devices/devices",

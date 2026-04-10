@@ -1,5 +1,6 @@
 .page {
   padding: 32rpx 32rpx 80rpx;
+  position: relative;
 }
 
 .hint {
@@ -10,6 +11,7 @@
 
 .head {
   padding: 40rpx 32rpx 48rpx;
+  background: linear-gradient(180deg, #fafbff 0%, #fff 45%);
 }
 
 .head-row {
@@ -122,6 +124,10 @@
   border-bottom: 2rpx solid #f8fafc;
 }
 
+.menu-row-hover {
+  background: #f8fafc;
+}
+
 .sub {
   font-size: 26rpx;
   color: #94a3b8;
@@ -155,10 +161,11 @@
   margin-top: 48rpx;
   width: 100%;
   border-radius: 24rpx;
-  border: 2rpx solid #fecaca;
-  background: #fff;
+  border: 2rpx solid rgba(252, 165, 165, 0.85);
+  background: linear-gradient(180deg, #fff 0%, #fff5f5 100%);
   color: #dc2626;
   font-size: 28rpx;
+  font-weight: 500;
   line-height: 84rpx;
   padding: 0;
 }

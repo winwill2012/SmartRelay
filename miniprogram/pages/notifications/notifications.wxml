@@ -1,14 +1,34 @@
 <view class="page">
   <view wx:if="{{loading}}" class="hint">加载中…</view>
   <view wx:elif="{{list.length === 0}}" class="hint">暂无通知</view>
-  <view wx:else>
-    <view wx:for="{{list}}" wx:key="id" class="card item">
-      <view class="row">
-        <text class="title">{{item.title || '通知'}}</text>
-        <text wx:if="{{!item.read}}" class="dot">未读</text>
+  <view wx:else class="list-wrap">
+    <view wx:for="{{list}}" wx:key="id" class="swipe-row">
+      <view class="swipe-del-wrap">
+        <text class="swipe-del-btn" catchtap="onDelete" data-id="{{item.id}}">删除</text>
       </view>
-      <text class="body">{{item.body || item.message || ''}}</text>
-      <text class="time">{{item.created_at || ''}}</text>
+      <view
+        class="swipe-front"
+        style="transform: translateX({{item.swipeX}}rpx);"
+        bindtouchstart="touchStart"
+        bindtouchmove="touchMove"
+        bindtouchend="touchEnd"
+        bindtouchcancel="touchEnd"
+        data-index="{{index}}"
+      >
+        <view
+          class="card item {{item.read ? 'item--read' : ''}}"
+          data-id="{{item.id}}"
+          data-index="{{index}}"
+          catchtap="onTapItem"
+        >
+          <view class="row">
+            <text class="title">{{item.title || '通知'}}</text>
+            <text wx:if="{{!item.read}}" class="dot">未读</text>
+          </view>
+          <text class="body">{{item.body || item.message || ''}}</text>
+          <text class="time">{{item.created_at || ''}}</text>
+        </view>
+      </view>
     </view>
   </view>
 </view>

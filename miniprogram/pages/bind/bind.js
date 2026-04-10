@@ -41,7 +41,26 @@ Page({
         wx.switchTab({ url: '/pages/devices/devices' })
       }, 500)
     } catch (e) {
-      wx.showToast({ title: e.message || '绑定失败', icon: 'none' })
+      const msg = (e && e.message) || '绑定失败'
+      if (msg.includes('已绑定该设备')) {
+        app.globalData.provisionResult = null
+        wx.showToast({
+          title: '该设备已在当前账号下绑定',
+          icon: 'none',
+          duration: 2000
+        })
+        setTimeout(() => {
+          wx.switchTab({ url: '/pages/devices/devices' })
+        }, 1900)
+      } else if (msg.includes('已被其他用户绑定')) {
+        wx.showToast({
+          title: '该设备已被其他账号绑定，无法重复绑定',
+          icon: 'none',
+          duration: 3200
+        })
+      } else {
+        wx.showToast({ title: msg, icon: 'none' })
+      }
     } finally {
       this.setData({ submitting: false })
     }

@@ -1,0 +1,37 @@
+# ESP-IDF v5.5.x：json / mqtt 为内置组件。证书 bundle（esp_crt_bundle_attach）由 mbedtls 提供，勿单独 REQUIRES esp_crt_bundle（v6 等环境无此独立组件）。
+idf_component_register(
+  SRCS
+    "app_main.cpp"
+    "sr_app.cpp"
+    "sr_nvs.cpp"
+    "sr_led.cpp"
+    "sr_relay.cpp"
+    "sr_wifi.cpp"
+    "sr_sntp.cpp"
+    "sr_mqtt.cpp"
+    "sr_schedule.cpp"
+    "sr_ota.cpp"
+    "sr_ble.c"
+  INCLUDE_DIRS
+    "include"
+    "."
+  REQUIRES
+    nvs_flash
+    esp_wifi
+    esp_netif
+    esp_event
+    esp_phy
+    bt
+    mbedtls
+    esp_timer
+    esp_hw_support
+    esp_rom
+    esp_system
+    driver
+    app_update
+    esp_http_client
+    esp-tls
+    json
+    mqtt
+    spi_flash
+)

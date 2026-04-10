@@ -81,12 +81,15 @@
   width: 160rpx;
   height: 160rpx;
   border-radius: 32rpx;
-  background: #d1fae5;
+  background: linear-gradient(145deg, #d1fae5 0%, #a7f3d0 100%);
   color: #047857;
   font-size: 80rpx;
+  font-weight: 300;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 12rpx 32rpx rgba(16, 185, 129, 0.22),
+    0 0 0 1rpx rgba(255, 255, 255, 0.5) inset;
 }
 
 .ok-title {
@@ -158,13 +161,14 @@
 .btn-primary {
   margin-top: 48rpx;
   width: 100%;
-  background: #2563eb;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%);
   color: #fff;
   font-weight: 600;
   border-radius: 24rpx;
-  line-height: 84rpx;
+  line-height: 88rpx;
   padding: 0;
   font-size: 30rpx;
+  box-shadow: 0 12rpx 28rpx rgba(37, 99, 235, 0.28);
 }
 
 .btn-primary::after {

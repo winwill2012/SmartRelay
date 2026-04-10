@@ -1,10 +1,13 @@
 <view class="page">
-  <text class="lab">备注名</text>
-  <input
-    class="inp"
-    placeholder="例如：客厅灯带"
-    value="{{name}}"
-    bindinput="onInput"
-  />
+  <view class="form-card card">
+    <text class="lab">备注名</text>
+    <input
+      class="inp"
+      placeholder="例如：客厅灯带"
+      placeholder-class="inp-ph"
+      value="{{name}}"
+      bindinput="onInput"
+    />
+  </view>
   <button class="btn" loading="{{saving}}" bindtap="onSave">保存</button>
 </view>

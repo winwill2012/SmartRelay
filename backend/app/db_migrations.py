@@ -33,3 +33,30 @@ async def ensure_devices_relay_on(session: AsyncSession) -> None:
         if code == 1060 or "Duplicate column" in msg or "duplicate column" in msg.lower():
             return
         raise
+
+
+async def ensure_user_notifications_table(session: AsyncSession) -> None:
+    """站内通知表：定时任务执行结果等。"""
+    try:
+        await session.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS user_notifications (
+                  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                  user_id BIGINT NOT NULL,
+                  category VARCHAR(32) NOT NULL,
+                  title VARCHAR(128) NOT NULL,
+                  body VARCHAR(512) NOT NULL,
+                  extra JSON NULL,
+                  is_read TINYINT(1) NOT NULL DEFAULT 0,
+                  created_at DATETIME NOT NULL,
+                  INDEX idx_un_user_time (user_id, created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """
+            )
+        )
+        await session.commit()
+        logger.info("db migration: ensured user_notifications table")
+    except OperationalError:
+        await session.rollback()
+        raise

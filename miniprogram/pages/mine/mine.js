@@ -5,6 +5,8 @@ Page({
   data: {
     loggedIn: false,
     nickname: '',
+    avatarUrl: '',
+    avatarBroken: false,
     deviceCount: 0,
     scheduleCount: 0,
     notifyCount: 0
@@ -21,7 +23,9 @@ Page({
         deviceCount: 0,
         scheduleCount: 0,
         notifyCount: 0,
-        nickname: ''
+        nickname: '',
+        avatarUrl: '',
+        avatarBroken: false
       })
     }
   },
@@ -43,14 +47,23 @@ Page({
             ? stats.schedule_count
             : data.timer_count || 0
       const nickname = (data.nickname || data.nick_name || '').trim()
+      const avatarUrl = String(
+        data.avatar_url || data.avatarUrl || ''
+      ).trim()
       this.setData({
         nickname,
+        avatarUrl,
+        avatarBroken: false,
         deviceCount,
         scheduleCount
       })
     } catch (e) {
       /* 静默 */
     }
+  },
+
+  onAvatarError() {
+    this.setData({ avatarBroken: true })
   },
 
   async onTapNickname() {
@@ -85,7 +98,7 @@ Page({
       const data = await api.getNotifications()
       const list = Array.isArray(data) ? data : data.list || data.items || []
       const unread = list.filter((n) => n && !n.read).length
-      this.setData({ notifyCount: unread || list.length })
+      this.setData({ notifyCount: unread })
     } catch (e) {
       this.setData({ notifyCount: 0 })
     }
@@ -98,7 +111,9 @@ Page({
       deviceCount: 0,
       scheduleCount: 0,
       notifyCount: 0,
-      nickname: ''
+      nickname: '',
+      avatarUrl: '',
+      avatarBroken: false
     })
     wx.showToast({ title: '已退出', icon: 'success' })
   }

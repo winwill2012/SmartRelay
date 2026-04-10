@@ -33,13 +33,15 @@
       <navigator
         class="menu-row border"
         url="/pages/schedules/schedules?device_id={{device.device_id}}"
+        hover-class="menu-row-hover"
       >
         <text>定时任务</text>
-        <text class="sub">最多 10 条 ›</text>
+        <text class="chev">›</text>
       </navigator>
       <navigator
         class="menu-row border"
         url="/pages/logs/logs?device_id={{device.device_id}}"
+        hover-class="menu-row-hover"
       >
         <text>操作日志</text>
         <text class="chev">›</text>
@@ -47,6 +49,7 @@
       <navigator
         class="menu-row"
         url="/pages/firmware/firmware?device_id={{device.device_id}}"
+        hover-class="menu-row-hover"
       >
         <text>检查更新</text>
         <text class="sub">当前 {{device.fw_version || '—'}} ›</text>

@@ -1,51 +1,106 @@
 <view class="page">
-  <view class="hero card-gradient">
-    <view wx:if="{{!loggedIn}}" class="guest">
-      <navigator url="/pages/login/login" class="avatar-btn">登录</navigator>
-      <text class="guest-tip">登录后同步设备与账号信息</text>
-    </view>
-    <view wx:else class="user-top">
-      <view class="avatar-static">
-        <text class="avatar-static-icon">⏻</text>
+  <view class="page-bg" />
+  <view class="content">
+    <view class="hero card-glass">
+      <view wx:if="{{!loggedIn}}" class="guest">
+        <navigator url="/pages/login/login" class="btn-login">
+          <text class="btn-login-text">微信一键登录</text>
+          <text class="btn-login-arrow">→</text>
+        </navigator>
       </view>
-      <view class="nickname-btn" bindtap="onTapNickname">
-        <text class="nickname-text {{nickname ? '' : 'placeholder'}}">{{nickname || '点击设置昵称'}}</text>
+
+      <view wx:else class="user-block">
+        <view class="avatar-ring">
+          <image
+            wx:if="{{avatarUrl && !avatarBroken}}"
+            class="avatar-img"
+            src="{{avatarUrl}}"
+            mode="aspectFill"
+            binderror="onAvatarError"
+          />
+          <view wx:else class="avatar-switch-face">
+            <view class="switch-track">
+              <view class="switch-knob" />
+            </view>
+          </view>
+        </view>
+        <view class="nickname-row" bindtap="onTapNickname">
+          <text class="nickname-text {{nickname ? '' : 'placeholder'}}">{{nickname || '点击设置昵称'}}</text>
+          <text class="nickname-edit">编辑</text>
+        </view>
+      </view>
+
+      <view class="stats">
+        <view class="stat-cell">
+          <text class="stat-num {{loggedIn ? 'primary' : 'muted'}}">{{deviceCount}}</text>
+          <text class="stat-label">已绑定设备</text>
+        </view>
+        <view class="stat-divider" />
+        <view class="stat-cell">
+          <text class="stat-num">{{scheduleCount}}</text>
+          <text class="stat-label">定时任务</text>
+        </view>
       </view>
     </view>
 
-    <view class="stats">
-      <view class="stat-box">
-        <text class="stat-label">已绑定设备</text>
-        <text class="stat-num {{loggedIn ? 'primary' : 'muted'}}">{{deviceCount}}</text>
-      </view>
-      <view class="stat-box">
-        <text class="stat-label">定时任务</text>
-        <text class="stat-num">{{scheduleCount}}</text>
-      </view>
-    </view>
-  </view>
-
-  <view class="menu card">
-    <navigator url="/pages/notifications/notifications" class="menu-row border">
-      <view class="menu-left">
-        <text class="menu-ico">🔔</text>
-        <text>通知中心</text>
-      </view>
-      <view class="menu-right">
-        <text class="badge-num {{notifyCount > 0 ? 'on' : 'off'}}">{{notifyCount}}</text>
+    <view class="menu card-glass menu-block">
+      <navigator url="/pages/notifications/notifications" class="menu-row border" hover-class="menu-row--hover">
+        <view class="menu-left">
+          <view class="menu-ico-svg menu-ico-svg--bell" />
+          <view class="menu-text-wrap">
+            <text class="menu-title">通知中心</text>
+            <text class="menu-desc">告警与系统消息</text>
+          </view>
+        </view>
+        <view class="menu-right">
+          <text class="badge-num {{notifyCount > 0 ? 'on' : 'off'}}">{{notifyCount}}</text>
+          <text class="chev">›</text>
+        </view>
+      </navigator>
+      <navigator url="/pages/shares/shares" class="menu-row border" hover-class="menu-row--hover">
+        <view class="menu-left">
+          <view class="menu-ico-svg menu-ico-svg--share" />
+          <view class="menu-text-wrap">
+            <text class="menu-title">分享管理</text>
+            <text class="menu-desc">设备共享与权限</text>
+          </view>
+        </view>
         <text class="chev">›</text>
-      </view>
-    </navigator>
-    <navigator url="/pages/shares/shares" class="menu-row">
-      <view class="menu-left">
-        <text class="menu-ico">🔗</text>
-        <text>分享管理</text>
-      </view>
-      <text class="chev">›</text>
-    </navigator>
-  </view>
+      </navigator>
+      <navigator url="/pages/privacy-policy/privacy-policy" class="menu-row border" hover-class="menu-row--hover">
+        <view class="menu-left">
+          <view class="menu-ico-svg menu-ico-svg--privacy" />
+          <view class="menu-text-wrap">
+            <text class="menu-title">隐私政策</text>
+            <text class="menu-desc">个人信息保护说明</text>
+          </view>
+        </view>
+        <text class="chev">›</text>
+      </navigator>
+      <navigator url="/pages/help-feedback/help-feedback" class="menu-row border" hover-class="menu-row--hover">
+        <view class="menu-left">
+          <view class="menu-ico-svg menu-ico-svg--help" />
+          <view class="menu-text-wrap">
+            <text class="menu-title">帮助与反馈</text>
+            <text class="menu-desc">问题咨询与建议</text>
+          </view>
+        </view>
+        <text class="chev">›</text>
+      </navigator>
+      <navigator url="/pages/about/about" class="menu-row" hover-class="menu-row--hover">
+        <view class="menu-left">
+          <view class="menu-ico-svg menu-ico-svg--about" />
+          <view class="menu-text-wrap">
+            <text class="menu-title">关于</text>
+            <text class="menu-desc">版本与版权声明</text>
+          </view>
+        </view>
+        <text class="chev">›</text>
+      </navigator>
+    </view>
 
-  <view wx:if="{{loggedIn}}" class="logout-wrap">
-    <button class="btn-logout" bindtap="onLogout">退出登录</button>
+    <view wx:if="{{loggedIn}}" class="logout-wrap">
+      <button class="btn-logout" bindtap="onLogout">退出登录</button>
+    </view>
   </view>
 </view>

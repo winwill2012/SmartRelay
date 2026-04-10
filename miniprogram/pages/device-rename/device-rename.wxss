@@ -2,28 +2,42 @@
   padding: 32rpx;
 }
 
+.form-card {
+  padding: 32rpx 28rpx 36rpx;
+}
+
 .lab {
-  font-size: 24rpx;
-  font-weight: 500;
+  font-size: 26rpx;
+  font-weight: 600;
   color: #475569;
+  letter-spacing: 0.02em;
 }
 
 .inp {
   margin-top: 16rpx;
-  padding: 24rpx;
-  border-radius: 24rpx;
+  padding: 26rpx 24rpx;
+  border-radius: 20rpx;
   border: 2rpx solid #e2e8f0;
+  background: #f8fafc;
   font-size: 30rpx;
+  color: #0f172a;
+}
+
+.inp-ph {
+  color: #94a3b8;
 }
 
 .btn {
-  margin-top: 48rpx;
+  margin-top: 40rpx;
   width: 100%;
-  background: #2563eb;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%);
   color: #fff;
   font-weight: 600;
+  font-size: 30rpx;
   border-radius: 24rpx;
-  padding: 28rpx 0;
+  line-height: 88rpx;
+  padding: 0;
+  box-shadow: 0 12rpx 28rpx rgba(37, 99, 235, 0.28);
 }
 
 .btn::after {

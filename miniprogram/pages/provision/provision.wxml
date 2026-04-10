@@ -19,11 +19,23 @@
   </view>
 
   <view class="tip-box">
-    <text class="tip-txt">设备配网模式：长按 BOOT 约 5 秒至蓝灯快闪。</text>
+    <text class="tip-txt">新设备上电后自动进入配网模式（蓝灯快速闪烁），老设备可以长按BOOT按键5秒重置并重新配网。</text>
+    <text class="tip-sub">搜索前请开启手机蓝牙与定位权限。</text>
   </view>
 
   <view wx:if="{{step===0}}" class="block">
-    <button class="btn-primary full" loading="{{scanning}}" bindtap="onScan">搜索设备</button>
+    <button class="btn-primary full" disabled="{{scanning}}" bindtap="onScan">{{scanning ? '搜索中…' : '搜索设备'}}</button>
+    <view wx:if="{{scanning}}" class="radar-panel">
+      <view class="radar">
+        <view class="radar-ring radar-ring--a"/>
+        <view class="radar-ring radar-ring--b"/>
+        <view class="radar-disk">
+          <view class="radar-sweep"/>
+        </view>
+        <view class="radar-dot"/>
+      </view>
+      <text class="radar-label">正在扫描附近设备…</text>
+    </view>
     <view wx:if="{{found.length}}" class="found-title">附近设备</view>
     <view
       wx:for="{{found}}"
@@ -33,7 +45,7 @@
       data-name="{{item.name}}"
       bindtap="onPickDevice"
     >
-      <text class="found-name">{{item.name || item.localName || '未知'}}</text>
+      <text class="found-name">{{item.localName || item.name || '未知'}}</text>
       <text class="found-rssi">{{item.RSSI}} dBm</text>
     </view>
   </view>
@@ -53,10 +65,8 @@
     <text class="label mt">密码</text>
     <view class="pwd-box">
       <input class="pwd-input" password="{{!showPwd}}" placeholder="输入 WiFi 密码" value="{{wifiPwd}}" bindinput="onPwd"/>
-      <view class="eye" bindtap="togglePwd">
-        <view class="eye-icon {{showPwd ? 'on' : 'off'}}">
-          <view class="eye-dot"/>
-        </view>
+      <view class="eye-hit" bindtap="togglePwd" hover-class="eye-hit--hover">
+        <view class="eye-glyph {{showPwd ? 'eye-glyph--visible' : 'eye-glyph--hidden'}}" />
       </view>
     </view>
 

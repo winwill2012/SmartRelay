@@ -89,12 +89,23 @@ async def dashboard_metrics(
     )
     cmd_today = int(cmd_c.scalar_one() or 0)
 
+    fv = await session.execute(select(Device.fw_version, func.count()).group_by(Device.fw_version))
+    fw_distribution = sorted(
+        (
+            {"fw_version": (ver or "(unknown)"), "device_count": int(cnt or 0)}
+            for ver, cnt in fv.all()
+        ),
+        key=lambda x: x["device_count"],
+        reverse=True,
+    )
+
     return ok(
         {
             "user_count": user_count,
             "device_count": device_count,
             "online_count": online_count,
             "commands_today": cmd_today,
+            "fw_distribution": fw_distribution,
         }
     )
 

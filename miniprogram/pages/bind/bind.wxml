@@ -3,7 +3,7 @@
     <view class="step-row">
       <view class="step-item">
         <view class="bubble done">✓</view>
-        <text class="step-txt ok">发现</text>
+        <text class="step-txt ok">搜索</text>
       </view>
       <view class="step-line on"/>
       <view class="step-item">
@@ -30,7 +30,7 @@
       <text class="v mono">{{device_id}}</text>
     </view>
     <view class="row">
-      <text class="k">固件</text>
+      <text class="k">固件版本</text>
       <text class="v">{{fw_version || '—'}}</text>
     </view>
   </view>

@@ -82,7 +82,10 @@ Page({
     })
     try {
       await ble.authorizeLocationIfNeeded()
-      const list = await wifi.getNearbyWifiList()
+      const list = (await wifi.getNearbyWifiList()).filter((w) =>
+        String(w.SSID || '')
+          .trim()
+      )
       const enriched = list.map((w) => {
         const sig = w.signalStrength != null ? Number(w.signalStrength) : 0
         let sigLevel = 1
@@ -127,9 +130,11 @@ Page({
         ble.stopScan().then(() => {
           const n = acc.length
           wx.showToast({
-            title: n ? `发现 ${n} 台设备` : '未发现设备：请确认设备已配网模式且靠近手机',
+            title: n
+              ? `发现 ${n} 台设备`
+              : '未发现 SR- 设备：请先长按 BOOT 5s 清 WiFi，LED 快闪后重试，并打开手机蓝牙与定位',
             icon: 'none',
-            duration: 2800
+            duration: 3200
           })
           this.setData({ scanning: false })
         })

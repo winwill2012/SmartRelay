@@ -1,0 +1,73 @@
+.page {
+  min-height: 100vh;
+  padding: 48rpx 32rpx;
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #1e3a8a 0%, #3b82f6 28%, #e8f0fe 55%, #f5f7fa 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.card {
+  width: 100%;
+  max-width: 640rpx;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 28rpx;
+  padding: 48rpx 40rpx 44rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 24rpx 48rpx rgba(15, 23, 42, 0.12);
+  text-align: center;
+}
+
+.app-name {
+  display: block;
+  font-size: 44rpx;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.app-tag {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.ver-row {
+  margin-top: 40rpx;
+  padding: 24rpx 20rpx;
+  border-radius: 20rpx;
+  background: #f8fafc;
+  border: 2rpx solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ver-label {
+  font-size: 26rpx;
+  color: #64748b;
+}
+
+.ver-value {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #2563eb;
+  font-variant-numeric: tabular-nums;
+}
+
+.copy-block {
+  margin-top: 36rpx;
+  padding-top: 32rpx;
+  border-top: 2rpx solid #f1f5f9;
+}
+
+.copy {
+  display: block;
+  font-size: 24rpx;
+  color: #64748b;
+  line-height: 1.65;
+}
