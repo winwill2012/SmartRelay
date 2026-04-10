@@ -161,6 +161,7 @@ async def bind_device(
         created_at=datetime.now(),
     )
     session.add(ud)
+    dev.last_seen_at = datetime.now()
     await session.commit()
     return ok({"device_id": dev.device_id, "remark": ud.remark})
 

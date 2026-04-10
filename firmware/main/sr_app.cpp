@@ -115,6 +115,23 @@ static void publish_lwt_online(void) {
   }
 }
 
+/** 配网成功后尽快连上 MQTT 并上报，让服务端 last_seen 刷新，避免用户绑定后列表仍显示离线 */
+static void provision_await_mqtt_and_publish(void) {
+  int64_t t0 = now_ms();
+  while (!sr_mqtt_connected() && (now_ms() - t0) < 10000) {
+    vTaskDelay(pdMS_TO_TICKS(40));
+    esp_task_wdt_reset();
+  }
+  if (!sr_mqtt_connected()) {
+    ESP_LOGW(TAG, "provision: mqtt not ready in 10s, will retry in main loop");
+    return;
+  }
+  publish_lwt_online();
+  publish_report_on_mqtt_connected_edge();
+  s_prev_mqtt = true;
+  s_last_hb = now_ms();
+}
+
 static void publish_ack_ok(const char *cmd_id, cJSON *applied) {
   if (!sr_mqtt_connected() || !cmd_id || !cmd_id[0]) return;
   cJSON *o = cJSON_CreateObject();
@@ -589,6 +606,7 @@ void sr_app_main(void) {
       run_wifi_provisioning(s.c_str(), p.c_str());
       if (sr_wifi_has_ip()) {
         sr_mqtt_start();
+        provision_await_mqtt_and_publish();
         sr_led_set_mode(SR_LED_BREATH);
       }
     }

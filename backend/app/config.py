@@ -47,8 +47,8 @@ class Settings(BaseSettings):
     wechat_app_id: str = ""
     wechat_secret: str = ""
 
-    # Offline threshold (seconds), default per protocol §1
-    device_offline_seconds: int = 15
+    # 超过该秒数未收到上行则列表显示离线（需大于固件心跳间隔，默认 3s×若干次）
+    device_offline_seconds: int = 45
 
     # Default admin (password hashed at runtime, not stored here)
     admin_default_username: str = "admin"
