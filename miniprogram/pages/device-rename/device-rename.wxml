@@ -1,12 +1,14 @@
 <view class="page">
   <view class="form-card card">
     <text class="lab">备注名</text>
+    <text class="lab-hint">在设备列表与详情页展示，便于区分多台设备</text>
     <input
       class="inp"
       placeholder="例如：客厅灯带"
       placeholder-class="inp-ph"
       value="{{name}}"
       bindinput="onInput"
+      maxlength="64"
     />
   </view>
   <button class="btn" loading="{{saving}}" bindtap="onSave">保存</button>

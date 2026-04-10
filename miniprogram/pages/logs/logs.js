@@ -94,13 +94,22 @@ function logRowVariant(action, detail) {
 function mapLogItem(x) {
   const action = x.action || ''
   const detail = x.detail
+  const op = x.operator_name != null && String(x.operator_name).trim() !== '' ? String(x.operator_name).trim() : ''
   return {
     id: x.id,
     actionLabel: ACTION_ZH[action] || action || '操作',
     detailText: formatLogDetail(action, detail),
     timeText: formatLogTime(x.created_at),
-    rowVariant: logRowVariant(action, detail)
+    rowVariant: logRowVariant(action, detail),
+    operatorText: op ? `操作者：${op}` : ''
   }
+}
+
+function applyLogFilter(list, mode) {
+  if (mode === 'on') return list.filter((i) => i.rowVariant === 'manual-on')
+  if (mode === 'off') return list.filter((i) => i.rowVariant === 'manual-off')
+  if (mode === 'schedule') return list.filter((i) => i.rowVariant === 'schedule')
+  return list
 }
 
 Page({
@@ -109,6 +118,14 @@ Page({
     loading: true,
     error: '',
     list: [],
+    displayList: [],
+    filter: 'all',
+    filterModes: [
+      { id: 'all', label: '所有' },
+      { id: 'on', label: '开' },
+      { id: 'off', label: '关' },
+      { id: 'schedule', label: '定时' }
+    ],
     page: 1,
     hasMore: true
   },
@@ -118,10 +135,17 @@ Page({
   },
 
   onShow() {
-    this.setData({ page: 1, list: [], hasMore: true })
+    this.setData({ page: 1, list: [], displayList: [], hasMore: true, filter: 'all' })
     if (this.data.device_id) {
       this.load(true)
     }
+  },
+
+  onFilter(e) {
+    const mode = e.currentTarget.dataset.mode
+    if (!mode || mode === this.data.filter) return
+    const displayList = applyLogFilter(this.data.list, mode)
+    this.setData({ filter: mode, displayList })
   },
 
   async load(reset) {
@@ -136,9 +160,11 @@ Page({
       const arr = Array.isArray(data) ? data : data.list || data.items || []
       const mapped = arr.map(mapLogItem)
       const list = reset ? mapped : this.data.list.concat(mapped)
+      const displayList = applyLogFilter(list, this.data.filter)
       const hasMore = arr.length >= 20
       this.setData({
         list,
+        displayList,
         page: page + 1,
         hasMore,
         loading: false

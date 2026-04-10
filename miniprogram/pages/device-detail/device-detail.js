@@ -84,39 +84,6 @@ Page({
     }
   },
 
-  async onEditName() {
-    const d = this.data.device || {}
-    const id = d.device_id || this.deviceId
-    if (!id) return
-    const current = d.name || ''
-    const res = await new Promise((resolve) => {
-      wx.showModal({
-        title: '修改备注名',
-        editable: true,
-        placeholderText: '请输入设备名称',
-        content: current,
-        success: resolve,
-        fail: () => resolve({ confirm: false })
-      })
-    })
-    if (!res || !res.confirm) return
-    const next = String(res.content || '').trim()
-    if (!next || next === current) return
-    wx.showLoading({ title: '保存中…', mask: true })
-    try {
-      await api.patchDevice(id, { name: next })
-      this.setData({
-        device: { ...d, name: next },
-        encodedName: encodeURIComponent(next)
-      })
-      wx.showToast({ title: '已更新', icon: 'success' })
-    } catch (e) {
-      wx.showToast({ title: e.message || '保存失败', icon: 'none' })
-    } finally {
-      wx.hideLoading()
-    }
-  },
-
   onUnbind() {
     const id = this.deviceId
     wx.showModal({

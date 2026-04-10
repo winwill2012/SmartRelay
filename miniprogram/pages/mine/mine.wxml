@@ -18,11 +18,12 @@
             mode="aspectFill"
             binderror="onAvatarError"
           />
-          <view wx:else class="avatar-switch-face">
-            <view class="switch-track">
-              <view class="switch-knob" />
-            </view>
-          </view>
+          <image
+            wx:else
+            class="avatar-img avatar-img--logo"
+            src="../../logo.png"
+            mode="aspectFit"
+          />
         </view>
         <view class="nickname-row" bindtap="onTapNickname">
           <text class="nickname-text {{nickname ? '' : 'placeholder'}}">{{nickname || '点击设置昵称'}}</text>
@@ -53,7 +54,7 @@
           </view>
         </view>
         <view class="menu-right">
-          <text class="badge-num {{notifyCount > 0 ? 'on' : 'off'}}">{{notifyCount}}</text>
+          <text wx:if="{{notifyCount > 0}}" class="badge-num on">{{notifyCount}}</text>
           <text class="chev">›</text>
         </view>
       </navigator>

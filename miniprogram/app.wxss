@@ -1,4 +1,4 @@
-/* 全局：冷灰底 + 统一卡片与主色，与各页渐变顶栏搭配 */
+/* 全局配色：冷灰底 #f3f6fb、正文 #0f172a、主色 #2563eb、成功开关 #10b981、边框 #e2e8f0～#f1f5f9 */
 page {
   background-color: #f3f6fb;
   color: #0f172a;
@@ -11,7 +11,7 @@ page {
 }
 
 .mp-muted {
-  color: #8a8f99;
+  color: #64748b;
 }
 
 .btn-primary {
@@ -19,7 +19,7 @@ page {
   color: #fff;
   border-radius: 24rpx;
   font-weight: 600;
-  box-shadow: 0 10rpx 28rpx rgba(37, 99, 235, 0.28);
+  box-shadow: 0 8rpx 24rpx rgba(37, 99, 235, 0.24);
 }
 
 .filter-chip {
@@ -87,8 +87,8 @@ page {
 .card {
   border-radius: 28rpx;
   background: #fff;
-  border: 2rpx solid rgba(241, 245, 249, 0.95);
-  box-shadow: 0 4rpx 24rpx rgba(15, 23, 42, 0.055);
+  border: 2rpx solid #f1f5f9;
+  box-shadow: 0 2rpx 12rpx rgba(15, 23, 42, 0.04), 0 8rpx 28rpx rgba(15, 23, 42, 0.035);
 }
 
 /* 顶部氛围光（固定定位，pointer-events:none），用于首页等 */
@@ -100,7 +100,7 @@ page {
   height: 300rpx;
   background: linear-gradient(
     180deg,
-    rgba(219, 234, 254, 0.65) 0%,
+    rgba(219, 234, 254, 0.55) 0%,
     rgba(243, 246, 251, 0) 100%
   );
   z-index: 0;
@@ -127,7 +127,7 @@ page {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 14rpx 36rpx rgba(37, 99, 235, 0.38),
+  box-shadow: 0 12rpx 32rpx rgba(37, 99, 235, 0.3),
     0 0 0 1rpx rgba(255, 255, 255, 0.35) inset;
   z-index: 50;
 }

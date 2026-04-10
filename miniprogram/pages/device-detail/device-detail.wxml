@@ -3,9 +3,8 @@
   <block wx:else>
     <view class="card head">
       <view class="head-row">
-        <view class="name-block" bindtap="onEditName">
+        <view class="name-block">
           <text class="dev-name">{{device.name}}</text>
-          <text class="edit-tip">点击修改名称</text>
           <text class="dev-id">{{device.device_id}}</text>
         </view>
         <view wx:if="{{device.online}}" class="badge badge-on">
@@ -16,20 +15,31 @@
         </view>
       </view>
 
-      <view class="switch-wrap">
+      <view class="relay-zone">
+        <text class="relay-label {{device.relay_on ? 'on' : ''}}">
+          {{device.relay_on ? '开启' : '关闭'}}
+        </text>
         <view
-          class="switch-track switch-track-wide {{device.relay_on ? 'on' : 'off'}}"
+          class="relay-btn {{device.relay_on ? 'relay-btn--on' : 'relay-btn--off'}}"
+          hover-class="relay-btn-hover"
+          hover-stay-time="100"
           bindtap="onToggle"
         >
-          <view class="switch-knob"/>
+          <text class="relay-btn-text">{{device.relay_on ? '开' : '关'}}</text>
         </view>
-        <text class="relay-label {{device.relay_on ? 'on' : ''}}">
-          继电器 · {{device.relay_on ? '开启' : '关闭'}}
-        </text>
+        <text class="relay-hint">点击按钮切换</text>
       </view>
     </view>
 
     <view class="card menu">
+      <navigator
+        class="menu-row border"
+        url="/pages/device-rename/device-rename?device_id={{device.device_id}}&name={{encodedName}}"
+        hover-class="menu-row-hover"
+      >
+        <text>修改备注名</text>
+        <text class="sub menu-name-peek">{{device.name}} ›</text>
+      </navigator>
       <navigator
         class="menu-row border"
         url="/pages/schedules/schedules?device_id={{device.device_id}}"

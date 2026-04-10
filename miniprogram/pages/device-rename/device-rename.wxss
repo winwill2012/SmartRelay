@@ -1,43 +1,60 @@
 .page {
-  padding: 32rpx;
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 40rpx 36rpx calc(48rpx + env(safe-area-inset-bottom));
 }
 
 .form-card {
-  padding: 32rpx 28rpx 36rpx;
+  padding: 44rpx 36rpx 48rpx;
 }
 
 .lab {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.lab-hint {
+  display: block;
+  margin-top: 12rpx;
   font-size: 26rpx;
-  font-weight: 600;
-  color: #475569;
-  letter-spacing: 0.02em;
+  line-height: 1.5;
+  color: #64748b;
 }
 
 .inp {
-  margin-top: 16rpx;
-  padding: 26rpx 24rpx;
-  border-radius: 20rpx;
+  margin-top: 28rpx;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 112rpx;
+  padding: 32rpx 32rpx;
+  border-radius: 24rpx;
   border: 2rpx solid #e2e8f0;
-  background: #f8fafc;
-  font-size: 30rpx;
+  background: #fff;
+  font-size: 34rpx;
+  line-height: 1.45;
   color: #0f172a;
+  box-shadow: 0 2rpx 12rpx rgba(15, 23, 42, 0.04);
 }
 
 .inp-ph {
   color: #94a3b8;
+  font-size: 32rpx;
 }
 
 .btn {
-  margin-top: 40rpx;
+  margin-top: 48rpx;
   width: 100%;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%);
   color: #fff;
   font-weight: 600;
-  font-size: 30rpx;
-  border-radius: 24rpx;
-  line-height: 88rpx;
+  font-size: 32rpx;
+  border-radius: 28rpx;
+  line-height: 96rpx;
   padding: 0;
-  box-shadow: 0 12rpx 28rpx rgba(37, 99, 235, 0.28);
+  box-shadow: 0 12rpx 32rpx rgba(37, 99, 235, 0.28);
 }
 
 .btn::after {

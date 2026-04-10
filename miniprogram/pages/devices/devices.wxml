@@ -39,10 +39,17 @@
             hover-class="device-main-hover"
           >
             <view class="device-main-inner">
-              <view class="device-text-block">
-                <text class="device-name">{{item.name}}</text>
-                <view wx:if="{{item.next_schedule_summary}}" class="schedule-slot">
-                  <text class="schedule-line">{{item.next_schedule_summary}}</text>
+              <view class="device-row-content">
+                <view class="device-name-col">
+                  <text class="device-name">{{item.name}}</text>
+                  <text class="device-id-small">{{item.device_id}}</text>
+                </view>
+                <view wx:if="{{item.next_schedule_summary}}" class="schedule-side">
+                  <view class="schedule-clock">
+                    <view class="schedule-clock-hand schedule-clock-hand--hour"/>
+                    <view class="schedule-clock-hand schedule-clock-hand--min"/>
+                    <view class="schedule-clock-hub"/>
+                  </view>
                 </view>
               </view>
               <view class="device-badge-wrap">

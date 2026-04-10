@@ -129,7 +129,7 @@
 }
 
 .device-row {
-  margin-bottom: 24rpx;
+  margin-bottom: 28rpx;
   overflow: hidden;
 }
 
@@ -141,7 +141,7 @@
 .device-main {
   flex: 1;
   min-width: 0;
-  padding: 32rpx 24rpx;
+  padding: 44rpx 28rpx;
 }
 
 .device-main-hover {
@@ -152,23 +152,102 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 16rpx;
+  gap: 20rpx;
   min-width: 0;
 }
 
-.device-text-block {
+/* 左：设备名；右：仅有定时任务时显示时钟图标，与在线徽章并排 */
+.device-row-content {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.device-name-col {
+  flex: 1 1 0;
   min-width: 0;
 }
 
 .device-name {
   display: block;
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: 600;
+  line-height: 46rpx;
   color: #0f172a;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.device-id-small {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  line-height: 1.3;
+  color: #94a3b8;
+  font-family: ui-monospace, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-side {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rpx 0;
+}
+
+/* 扁平化：与「在线」徽章同类 — 浅底 + 主色描边/图形，无渐变与立体阴影 */
+.schedule-clock {
+  position: relative;
+  width: 40rpx;
+  height: 40rpx;
+  flex-shrink: 0;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: #eff6ff;
+  border: 2rpx solid #2563eb;
+}
+
+.schedule-clock-hand {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  transform-origin: 50% 100%;
+  background: #2563eb;
+}
+
+.schedule-clock-hand--hour {
+  width: 3rpx;
+  height: 10rpx;
+  margin-left: -1.5rpx;
+  border-radius: 2rpx;
+  transform: rotate(-36deg);
+}
+
+.schedule-clock-hand--min {
+  width: 2rpx;
+  height: 13rpx;
+  margin-left: -1rpx;
+  border-radius: 1rpx;
+  transform: rotate(56deg);
+}
+
+.schedule-clock-hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4rpx;
+  height: 4rpx;
+  margin-left: -2rpx;
+  margin-top: -2rpx;
+  border-radius: 50%;
+  background: #2563eb;
 }
 
 .device-badge-wrap {
@@ -181,9 +260,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8rpx;
-  padding: 4rpx 16rpx;
+  padding: 8rpx 20rpx;
   border-radius: 9999rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 500;
 }
 
@@ -211,26 +290,9 @@
   background: #94a3b8;
 }
 
-.schedule-slot {
-  margin-top: 12rpx;
-  display: flex;
-  align-items: center;
-}
-
-.schedule-line {
-  font-size: 24rpx;
-  line-height: 36rpx;
-  color: #64748b;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  width: 100%;
-}
-
-
 .device-inner .switch-track {
   align-self: center;
-  margin-right: 24rpx;
+  margin-right: 28rpx;
 }
 
 .fab-add {

@@ -10,8 +10,8 @@
 }
 
 .head {
-  padding: 40rpx 32rpx 48rpx;
-  background: linear-gradient(180deg, #fafbff 0%, #fff 45%);
+  padding: 36rpx 32rpx 32rpx;
+  background: linear-gradient(180deg, #fafbff 0%, #ffffff 50%);
 }
 
 .head-row {
@@ -34,19 +34,14 @@
   word-break: break-all;
 }
 
-.edit-tip {
-  display: block;
-  margin-top: 6rpx;
-  font-size: 22rpx;
-  color: #2563eb;
-}
-
 .dev-id {
   display: block;
-  margin-top: 8rpx;
+  margin-top: 10rpx;
   font-size: 24rpx;
-  color: #64748b;
+  color: #94a3b8;
   font-family: ui-monospace, monospace;
+  word-break: break-all;
+  line-height: 1.4;
 }
 
 .badge {
@@ -84,26 +79,74 @@
   background: #94a3b8;
 }
 
-.switch-wrap {
-  margin-top: 40rpx;
+/* 控制区：浅底圆角台 + 居中开关，避免大留白却不再堆长文案 */
+.relay-zone {
+  margin-top: 32rpx;
+  padding: 32rpx 24rpx 36rpx;
+  border-radius: 24rpx;
+  background: #f8fafc;
+  border: 2rpx solid #f1f5f9;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 22rpx;
+  gap: 24rpx;
 }
 
 .relay-label {
-  margin-top: 0;
-  margin-left: 0;
-  font-size: 28rpx;
-  font-weight: 500;
+  font-size: 30rpx;
+  font-weight: 600;
   color: #64748b;
-  text-align: center;
+  letter-spacing: 0.02em;
 }
 
 .relay-label.on {
   color: #047857;
+}
+
+/* 圆形电源按钮：点击 hover缩放 + 透明度反馈 */
+.relay-btn {
+  width: 208rpx;
+  height: 208rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.relay-btn--on {
+  background: linear-gradient(145deg, #34d399 0%, #10b981 42%, #059669 100%);
+  box-shadow: 0 14rpx 40rpx rgba(16, 185, 129, 0.32),
+    0 0 0 2rpx rgba(255, 255, 255, 0.35) inset;
+}
+
+.relay-btn--off {
+  background: linear-gradient(145deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+  box-shadow: 0 10rpx 28rpx rgba(15, 23, 42, 0.1),
+    0 0 0 2rpx rgba(255, 255, 255, 0.65) inset;
+}
+
+.relay-btn-text {
+  font-size: 56rpx;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.relay-btn--off .relay-btn-text {
+  color: #475569;
+}
+
+.relay-btn-hover {
+  transform: scale(0.9);
+  opacity: 0.88;
+}
+
+.relay-hint {
+  font-size: 22rpx;
+  color: #94a3b8;
+  font-weight: 500;
 }
 
 .menu {
@@ -131,6 +174,13 @@
 .sub {
   font-size: 26rpx;
   color: #94a3b8;
+}
+
+.menu-name-peek {
+  max-width: 340rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chev {

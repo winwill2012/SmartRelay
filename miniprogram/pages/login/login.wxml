@@ -1,11 +1,7 @@
 <view class="page">
   <view class="top">
     <view class="brand">
-      <view class="logo-ring">
-        <view class="logo">SR</view>
-      </view>
-      <text class="title">微联智能</text>
-      <text class="subtitle">SmartRelay 智能开关</text>
+      <image class="brand-logo" src="../../logo.png" mode="widthFix" />
     </view>
   </view>
 

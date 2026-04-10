@@ -1,15 +1,36 @@
 <view class="page">
   <view wx:if="{{loading}}" class="hint">加载中…</view>
   <view wx:elif="{{error}}" class="hint err">{{error}}</view>
-  <view wx:elif="{{list.length === 0}}" class="hint">暂无日志</view>
-  <view wx:else>
-    <view wx:for="{{list}}" wx:key="id" class="card row row--{{item.rowVariant}}">
-      <view class="row-top">
-        <text class="act">{{item.actionLabel}}</text>
-        <text class="time">{{item.timeText}}</text>
-      </view>
-      <text wx:if="{{item.detailText}}" class="detail">{{item.detailText}}</text>
+  <block wx:else>
+    <view class="filters" aria-role="toolbar">
+      <view
+        wx:for="{{filterModes}}"
+        wx:key="id"
+        class="filter-chip {{filter === item.id ? 'filter-chip-on' : 'filter-chip-off'}}"
+        data-mode="{{item.id}}"
+        bindtap="onFilter"
+      >{{item.label}}</view>
     </view>
-    <view wx:if="{{hasMore}}" class="more" bindtap="loadMore">加载更多</view>
-  </view>
+
+    <view wx:if="{{list.length === 0}}" class="hint">暂无日志</view>
+
+    <block wx:elif="{{displayList.length === 0}}">
+      <view class="hint">当前筛选下暂无记录</view>
+      <view wx:if="{{hasMore}}" class="more" bindtap="loadMore">加载更多</view>
+    </block>
+
+    <block wx:else>
+      <view wx:for="{{displayList}}" wx:key="id" class="card row row--{{item.rowVariant}}">
+        <view class="row-top">
+          <view class="row-top-main">
+            <text class="act">{{item.actionLabel}}</text>
+            <text wx:if="{{item.operatorText}}" class="operator">{{item.operatorText}}</text>
+          </view>
+          <text class="time">{{item.timeText}}</text>
+        </view>
+        <text wx:if="{{item.detailText}}" class="detail">{{item.detailText}}</text>
+      </view>
+      <view wx:if="{{hasMore}}" class="more" bindtap="loadMore">加载更多</view>
+    </block>
+  </block>
 </view>

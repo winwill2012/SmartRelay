@@ -2,6 +2,13 @@
   padding: 24rpx 32rpx 80rpx;
 }
 
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
 .hint {
   text-align: center;
   color: #64748b;
@@ -18,24 +25,24 @@
 }
 
 .card.row.row--schedule {
-  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-  border: 2rpx solid #6ee7b7;
+  background: linear-gradient(135deg, #fefffe 0%, #f3faf6 100%);
+  border: 2rpx solid #e8f4ec;
 }
 
-/* 用户下发：开 = 偏蓝，关 = 偏橙，与定时（绿）区分 */
+/* 用户下发：极淡色相 + 浅灰边，仅作弱区分 */
 .card.row.row--manual-on {
-  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-  border: 2rpx solid #38bdf8;
+  background: linear-gradient(135deg, #feffff 0%, #f4f9ff 100%);
+  border: 2rpx solid #e8eef7;
 }
 
 .card.row.row--manual-off {
-  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
-  border: 2rpx solid #fdba74;
+  background: linear-gradient(135deg, #fffffe 0%, #fffaf5 100%);
+  border: 2rpx solid #f5ebe3;
 }
 
 .card.row.row--manual {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border: 2rpx solid #93c5fd;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 2rpx solid #f1f5f9;
 }
 
 .card.row.row--default {
@@ -50,10 +57,23 @@
   align-items: flex-start;
 }
 
+.row-top-main {
+  flex: 1;
+  min-width: 0;
+}
+
 .act {
   font-size: 28rpx;
   font-weight: 600;
   color: #0f172a;
+}
+
+.operator {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #64748b;
+  line-height: 1.35;
 }
 
 .time {

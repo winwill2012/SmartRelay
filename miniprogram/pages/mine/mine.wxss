@@ -83,9 +83,9 @@
 .avatar-ring {
   padding: 8rpx;
   border-radius: 9999rpx;
-  background-color: #1e3a8a;
-  background-image: linear-gradient(145deg, #60a5fa 0%, #2563eb 38%, #1d4ed8 72%, #172554 100%);
-  box-shadow: 0 14rpx 40rpx rgba(29, 78, 216, 0.42);
+  background: linear-gradient(145deg, #93c5fd 0%, #3b82f6 35%, #2563eb 65%, #1e3a8a 100%);
+  box-shadow: 0 12rpx 36rpx rgba(37, 99, 235, 0.28),
+    0 0 0 1rpx rgba(255, 255, 255, 0.35) inset;
 }
 
 .avatar-img {
@@ -99,44 +99,10 @@
   background-color: #2563eb;
 }
 
-/* 无头像或加载失败：高对比蓝色系「开关」示意 */
-.avatar-switch-face {
-  width: 136rpx;
-  height: 136rpx;
-  border-radius: 9999rpx;
-  border: 4rpx solid #bfdbfe;
-  box-sizing: border-box;
-  background-color: #1d4ed8;
-  background-image: linear-gradient(165deg, #3b82f6 0%, #1d4ed8 52%, #1e3a8a 100%);
-  box-shadow: 0 6rpx 20rpx rgba(30, 58, 138, 0.45),
-    inset 0 2rpx 12rpx rgba(15, 23, 42, 0.22);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.switch-track {
-  width: 84rpx;
-  height: 48rpx;
-  border-radius: 9999rpx;
-  background-color: #38bdf8;
-  background-image: linear-gradient(90deg, #7dd3fc 0%, #0ea5e9 45%, #0284c7 100%);
-  box-shadow: 0 0 0 3rpx rgba(255, 255, 255, 0.35) inset,
-    0 8rpx 16rpx rgba(8, 47, 73, 0.35);
-  display: flex;
-  align-items: center;
-  padding: 0 8rpx;
-  box-sizing: border-box;
-}
-
-.switch-knob {
-  width: 36rpx;
-  height: 36rpx;
-  border-radius: 50%;
-  background-color: #f8fafc;
-  background-image: linear-gradient(180deg, #ffffff 0%, #e2e8f0 100%);
-  box-shadow: 0 4rpx 14rpx rgba(15, 23, 42, 0.35);
-  margin-left: auto;
+/* 无微信头像：品牌 logo（白底图在圆内居中） */
+.avatar-img--logo {
+  background-color: #ffffff;
+  padding: 10rpx;
 }
 
 .nickname-row {
@@ -339,12 +305,6 @@
   background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
   color: #fff;
   box-shadow: 0 4rpx 12rpx rgba(239, 68, 68, 0.35);
-}
-
-.badge-num.off {
-  background: #e2e8f0;
-  color: #64748b;
-  font-weight: 500;
 }
 
 .chev {

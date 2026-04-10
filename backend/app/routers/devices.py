@@ -24,6 +24,7 @@ from app.models import (
     RepeatType,
     Schedule,
     ScheduleAction,
+    User,
     UserDevice,
     UserDeviceRole,
 )
@@ -300,6 +301,23 @@ async def device_logs(
         )
     )
     total = int(c.scalar_one() or 0)
+
+    user_ids = {x.user_id for x in rows if x.user_id is not None}
+    nick_by_uid: dict[int, Optional[str]] = {}
+    if user_ids:
+        ur = await session.execute(select(User.id, User.nickname).where(User.id.in_(user_ids)))
+        for uid, nn in ur.all():
+            raw = (nn or "").strip()
+            nick_by_uid[int(uid)] = raw if raw else None
+
+    def operator_display(log: DeviceOperationLog) -> str:
+        if log.action == "schedule.run":
+            return "定时任务"
+        if log.user_id is not None:
+            nick = nick_by_uid.get(int(log.user_id))
+            return nick if nick else "未设置昵称"
+        return "—"
+
     items = [
         {
             "id": x.id,
@@ -307,6 +325,7 @@ async def device_logs(
             "action": x.action,
             "detail": x.detail,
             "created_at": x.created_at.isoformat(),
+            "operator_name": operator_display(x),
         }
         for x in rows
     ]
