@@ -94,14 +94,22 @@ export async function adminChangePassword(old_password: string, new_password: st
   return unwrap(res)
 }
 
-export async function getDashboardMetrics(params?: Record<string, string>) {
+export async function getDashboardMetrics(params?: { period?: string; from?: string; to?: string }) {
   const res = await http.get<ApiEnvelope<Record<string, unknown>>>('/admin/dashboard/metrics', {
     params
   })
   return unwrap(res)
 }
 
-export async function getAdminUsers(params?: { page?: number; page_size?: number; q?: string }) {
+export async function getAdminUsers(params?: {
+  page?: number
+  page_size?: number
+  q?: string
+  reg_start?: string
+  reg_end?: string
+  login_start?: string
+  login_end?: string
+}) {
   const res = await http.get<ApiEnvelope<{ list?: unknown[]; items?: unknown[]; total?: number }>>(
     '/admin/users',
     { params }
@@ -114,7 +122,13 @@ export async function getAdminUser(id: string | number) {
   return unwrap(res)
 }
 
-export async function getAdminDevices(params?: { page?: number; page_size?: number; q?: string }) {
+export async function getAdminDevices(params?: {
+  page?: number
+  page_size?: number
+  q?: string
+  last_seen_start?: string
+  last_seen_end?: string
+}) {
   const res = await http.get<ApiEnvelope<{ list?: unknown[]; items?: unknown[]; total?: number }>>(
     '/admin/devices',
     { params }

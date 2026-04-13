@@ -1,25 +1,108 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { getDashboardMetrics } from '../api/client'
+import { buildLineChart, barHeights } from '../lib/dashboardCharts'
+
+type PeriodId = 'today' | 'week' | 'month' | 'year' | 'd7' | 'd30'
+
+type ChartsPayload = {
+  labels: string[]
+  online_rate: number[]
+  new_users: number[]
+  commands: number[]
+  captions?: { line?: string; users?: string; commands?: string }
+}
 
 const loading = ref(true)
 const err = ref('')
 const metrics = ref<Record<string, unknown>>({})
-const range = ref('today')
 
-const pills = [
+const activePill = ref<PeriodId | 'custom'>('today')
+const apiPeriod = ref<PeriodId>('today')
+const customRangeActive = ref(false)
+
+const customPanelOpen = ref(false)
+const rangeStart = ref('')
+const rangeEnd = ref('')
+
+const pills: { id: PeriodId; label: string }[] = [
   { id: 'today', label: '今日' },
   { id: 'week', label: '本周' },
   { id: 'month', label: '本月' },
+  { id: 'year', label: '本年' },
   { id: 'd7', label: '近 7 日' },
   { id: 'd30', label: '近 30 日' }
 ]
 
-async function load() {
+const periodLabel: Record<PeriodId, string> = {
+  today: '今日',
+  week: '本周',
+  month: '本月',
+  year: '本年',
+  d7: '近 7 日',
+  d30: '近 30 日'
+}
+
+function pad2(n: number) {
+  return n < 10 ? `0${n}` : String(n)
+}
+
+function fmtDashDate(d: Date) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+
+function initDateInputs() {
+  const end = new Date()
+  const start = new Date()
+  start.setDate(start.getDate() - 6)
+  rangeStart.value = fmtDashDate(start)
+  rangeEnd.value = fmtDashDate(end)
+}
+
+const charts = computed(() => (metrics.value.charts as ChartsPayload | undefined) ?? null)
+
+const chartLabels = computed(() => {
+  const c = charts.value
+  return c?.labels?.length ? c.labels : ['—']
+})
+
+const lineValues = computed(() => {
+  const c = charts.value
+  const v = c?.online_rate
+  return v?.length ? v : [0]
+})
+
+const userVals = computed(() => {
+  const c = charts.value
+  const v = c?.new_users
+  return v?.length ? v : [0]
+})
+
+const cmdVals = computed(() => {
+  const c = charts.value
+  const v = c?.commands
+  return v?.length ? v : [0]
+})
+
+const lineChart = computed(() => buildLineChart(lineValues.value, chartLabels.value))
+
+const userBarH = computed(() => barHeights(userVals.value))
+const cmdBarH = computed(() => barHeights(cmdVals.value, Math.max(...cmdVals.value, 1)))
+
+const lineCaption = computed(() => charts.value?.captions?.line ?? '在线率趋势')
+const barCaption = computed(() => charts.value?.captions?.users ?? '新增用户')
+const hourCaption = computed(() => charts.value?.captions?.commands ?? '指令下发')
+
+async function loadMetrics(period: PeriodId, opts?: { from: string; to: string }) {
   loading.value = true
   err.value = ''
   try {
-    metrics.value = await getDashboardMetrics({ range: range.value })
+    const params: { period: string; from?: string; to?: string } = { period }
+    if (opts?.from && opts?.to) {
+      params.from = opts.from
+      params.to = opts.to
+    }
+    metrics.value = await getDashboardMetrics(params)
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : '加载失败'
     metrics.value = {}
@@ -28,91 +111,310 @@ async function load() {
   }
 }
 
-function setRange(id: string) {
-  range.value = id
-  load()
+function pickPill(id: PeriodId) {
+  activePill.value = id
+  customPanelOpen.value = false
+  customRangeActive.value = false
+  apiPeriod.value = id
+  loadMetrics(id)
 }
 
-function num(k: string, fallback = '—') {
-  const v = metrics.value[k]
-  return v != null ? String(v) : fallback
+function onCustomPill() {
+  activePill.value = 'custom'
+  customPanelOpen.value = true
 }
+
+function applyCustomRange() {
+  let s = rangeStart.value
+  let e = rangeEnd.value
+  if (s && e && s > e) {
+    const t = s
+    s = e
+    e = t
+    rangeStart.value = s
+    rangeEnd.value = e
+  }
+  if (!s || !e) {
+    err.value = '请选择开始与结束日期。'
+    return
+  }
+  err.value = ''
+  customRangeActive.value = true
+  apiPeriod.value = 'today'
+  loadMetrics('today', { from: s, to: e })
+}
+
+function fmtInt(n: unknown) {
+  if (typeof n !== 'number' || Number.isNaN(n)) return '—'
+  return n.toLocaleString('zh-CN')
+}
+
+function fmtRate(n: unknown) {
+  if (typeof n !== 'number' || Number.isNaN(n)) return '—'
+  return n.toFixed(1)
+}
+
+const kpiTotalDev = computed(() => fmtInt(metrics.value.device_count))
+const kpiOnlineDev = computed(() => fmtInt(metrics.value.online_count))
+const kpiOnlineRate = computed(() => fmtRate(metrics.value.online_rate_percent))
+const kpiActive = computed(() => fmtInt(metrics.value.active_device_7d))
+const kpiUsers = computed(() => fmtInt(metrics.value.user_count))
+const kpiCmd = computed(() => fmtInt(metrics.value.commands_in_period))
+
+const subTotal = computed(() => '累计接入设备')
+const subOnlineDev = computed(() => '当前在线（时点）')
+const subOnlineRate = computed(() => '时点在线率')
+const subActive = computed(() => '最近7天有活动的设备')
+const subUsers = computed(() => {
+  const p = apiPeriod.value
+  const n = metrics.value.users_new_in_period
+  const add = typeof n === 'number' ? n : 0
+  if (customRangeActive.value) return `所选区间新增 ${add}`
+  return `${periodLabel[p]}新增 ${add}`
+})
+const subCmd = computed(() => {
+  if (customRangeActive.value) return '所选区间 · command.sent 累计'
+  const p = apiPeriod.value
+  return `${periodLabel[p]} · command.sent 累计`
+})
+
+const summaryRows = computed(() => {
+  const fw = metrics.value.pending_fw_upgrade_count
+  const share = metrics.value.share_bindings_in_period
+  const sched = metrics.value.schedule_runs_in_period
+  const p = apiPeriod.value
+  const shareLab = customRangeActive.value ? '所选区间分享新增' : `${periodLabel[p]}分享新增`
+  return [
+    { label: '固件待升级设备', value: fmtInt(fw), valClass: 'font-semibold text-amber-600' },
+    {
+      label: shareLab,
+      value: fmtInt(share),
+      valClass: 'font-semibold text-slate-900'
+    },
+    {
+      label: '定时任务触发',
+      value: typeof sched === 'number' ? sched.toLocaleString('zh-CN') : '—',
+      valClass: 'font-semibold text-slate-900'
+    },
+    { label: '告警（未读）', value: '0', valClass: 'font-semibold text-red-600' }
+  ]
+})
 
 onMounted(() => {
-  load()
+  initDateInputs()
+  customPanelOpen.value = false
+  loadMetrics('today')
 })
 </script>
 
 <template>
-  <div class="mb-6 space-y-4">
-    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-      <div>
+  <div class="mb-6 space-y-3">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <div class="min-w-0 flex-1 lg:max-w-xl">
         <p class="text-sm font-semibold text-slate-800">多维度运营概览</p>
-        <p class="text-xs text-slate-500 mt-0.5">数据由服务端 /admin/dashboard/metrics 提供</p>
+        <p class="text-xs text-slate-500 mt-0.5">图表数据来自数据库聚合；悬停数据点或柱条查看数值</p>
       </div>
-      <div class="admin-time-pills" role="group">
-        <button
-          v-for="p in pills"
-          :key="p.id"
-          type="button"
-          class="admin-time-pill"
-          :class="{ 'is-active': range === p.id }"
-          @click="setRange(p.id)"
+      <div class="flex flex-col gap-2 w-full lg:w-auto lg:items-end lg:shrink-0 lg:max-w-[44rem]">
+        <div class="admin-time-pills flex flex-wrap justify-end gap-1" role="group" aria-label="统计时间范围">
+          <button
+            v-for="p in pills"
+            :key="p.id"
+            type="button"
+            class="admin-time-pill"
+            :class="{ 'is-active': activePill === p.id }"
+            :data-range="p.id"
+            @click="pickPill(p.id)"
+          >
+            {{ p.label }}
+          </button>
+          <button
+            type="button"
+            class="admin-time-pill"
+            :class="{ 'is-active': activePill === 'custom' }"
+            data-range="custom"
+            @click="onCustomPill"
+          >
+            自定义
+          </button>
+        </div>
+        <div
+          v-show="customPanelOpen"
+          class="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 rounded-xl border border-slate-200/90 bg-slate-50/80 px-4 py-3 w-full lg:max-w-xl"
         >
-          {{ p.label }}
-        </button>
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-bold text-slate-600 mb-2">自定义起止日期</p>
+            <div class="admin-date-range max-w-xl" role="group" aria-label="自定义统计起止日期">
+              <input v-model="rangeStart" type="date" aria-label="开始日期" />
+              <span class="admin-date-range__sep">至</span>
+              <input v-model="rangeEnd" type="date" aria-label="结束日期" />
+            </div>
+          </div>
+          <button
+            type="button"
+            class="shrink-0 rounded-lg bg-primary text-white px-5 py-2.5 text-sm font-semibold shadow-md shadow-blue-500/20 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
+            @click="applyCustomRange"
+          >
+            应用
+          </button>
+        </div>
       </div>
     </div>
-    <p v-if="err" class="text-sm text-red-600">{{ err }}</p>
-    <p v-if="loading" class="text-sm text-slate-500">加载中…</p>
   </div>
+
+  <p v-if="err" class="text-sm text-red-600 mb-2">{{ err }}</p>
+  <p v-if="loading" class="text-sm text-slate-500 mb-4">加载中…</p>
 
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
     <article class="admin-card admin-kpi-card p-5">
       <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">总设备数</p>
-      <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">{{ num('total_devices') }}</p>
-      <p class="mt-1.5 text-xs text-slate-500">累计接入设备</p>
+      <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">{{ kpiTotalDev }}</p>
+      <p class="mt-1.5 text-xs text-slate-500">{{ subTotal }}</p>
     </article>
     <article class="admin-card admin-kpi-card p-5">
-      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">在线设备</p>
-      <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">{{ num('online_devices') }}</p>
-      <p class="mt-1.5 text-xs text-slate-500">实时在线</p>
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">在线设备数</p>
+      <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">{{ kpiOnlineDev }}</p>
+      <p class="mt-1.5 text-xs font-medium text-emerald-600">{{ subOnlineDev }}</p>
     </article>
     <article class="admin-card admin-kpi-card p-5">
-      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">用户数</p>
-      <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">{{ num('total_users') }}</p>
-      <p class="mt-1.5 text-xs text-slate-500">注册用户</p>
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">设备在线率</p>
+      <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">
+        {{ kpiOnlineRate }}<span class="text-lg font-semibold text-slate-500">%</span>
+      </p>
+      <p class="mt-1.5 text-xs font-medium text-slate-500">{{ subOnlineRate }}</p>
     </article>
     <article class="admin-card admin-kpi-card p-5">
-      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">今日指令</p>
-      <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">{{ num('commands_today') }}</p>
-      <p class="mt-1.5 text-xs text-slate-500">下行指令次数</p>
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">活跃设备</p>
+      <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">{{ kpiActive }}</p>
+      <p class="mt-1.5 text-xs text-slate-500">{{ subActive }}</p>
     </article>
     <article class="admin-card admin-kpi-card p-5">
-      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">绑定关系</p>
-      <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">{{ num('bindings') }}</p>
-      <p class="mt-1.5 text-xs text-slate-500">用户-设备</p>
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">累计用户数</p>
+      <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">{{ kpiUsers }}</p>
+      <p class="mt-1.5 text-xs font-medium text-emerald-600">{{ subUsers }}</p>
     </article>
     <article class="admin-card admin-kpi-card p-5">
-      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">固件版本</p>
-      <p class="mt-3 text-xl font-bold text-slate-900 tabular-nums">{{ num('latest_firmware', '—') }}</p>
-      <p class="mt-1.5 text-xs text-slate-500">最新活跃版本</p>
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">指令数</p>
+      <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">{{ kpiCmd }}</p>
+      <p class="mt-1.5 text-xs text-slate-500">{{ subCmd }}</p>
     </article>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <div class="admin-card p-5">
-      <p class="text-sm font-semibold text-slate-800 mb-3">趋势占位</p>
-      <div class="admin-chart-area admin-chart-area--line h-48 flex items-center justify-center text-slate-400 text-sm">
-        图表数据由后端 metrics 扩展后对接
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6 lg:items-stretch">
+    <section class="admin-card p-5 flex flex-col min-h-0">
+      <div class="flex justify-between items-start gap-2 mb-3 shrink-0">
+        <h2 class="text-sm font-bold text-slate-800">设备在线率趋势</h2>
+        <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ lineCaption }}</span>
       </div>
-    </div>
-    <div class="admin-card p-5">
-      <p class="text-sm font-semibold text-slate-800 mb-3">在线分布占位</p>
-      <div class="admin-chart-area h-48 flex items-center justify-center text-slate-400 text-sm">
-        可与原型 dashboard 中 SVG 图表对齐
+      <div class="admin-chart-area admin-chart-area--twin flex flex-col h-[260px]">
+        <svg
+          class="admin-chart-svg w-full h-full block"
+          viewBox="0 0 400 140"
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-label="在线率折线图"
+        >
+          <defs>
+            <linearGradient id="adminLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#2563eb" />
+              <stop offset="100%" stop-color="#60a5fa" />
+            </linearGradient>
+            <linearGradient id="adminFillGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.25" />
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <g>
+            <line
+              v-for="(gy, gi) in lineChart.gridYs"
+              :key="gi"
+              class="admin-chart-line-grid"
+              :x1="lineChart.pad"
+              :y1="gy"
+              :x2="lineChart.w - lineChart.pad"
+              :y2="gy"
+            />
+          </g>
+          <path class="admin-chart-line-fill" fill="url(#adminFillGrad)" :d="lineChart.fillD" />
+          <path class="admin-chart-line-path" :d="lineChart.pathD" />
+          <g class="dash-line-points">
+            <circle
+              v-for="(v, i) in lineChart.vertices"
+              :key="'dot' + i"
+              :cx="v.x"
+              :cy="v.y"
+              r="3.5"
+              fill="#2563eb"
+              class="pointer-events-none opacity-90"
+            />
+            <circle
+              v-for="(v, i) in lineChart.vertices"
+              :key="'pt' + i"
+              :cx="v.x"
+              :cy="v.y"
+              r="10"
+              fill="transparent"
+              stroke="none"
+              class="cursor-crosshair"
+            >
+              <title>{{ v.label }}：在线率 {{ v.value }}%</title>
+            </circle>
+          </g>
+        </svg>
       </div>
-    </div>
+    </section>
+    <section class="admin-card p-5 flex flex-col min-h-0">
+      <div class="flex justify-between items-start gap-2 mb-3 shrink-0">
+        <h2 class="text-sm font-bold text-slate-800">新增用户</h2>
+        <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ barCaption }}</span>
+      </div>
+      <div class="admin-chart-area admin-chart-area--twin flex flex-col h-[260px]">
+        <div class="admin-chart-bars flex-1 min-h-0 h-full">
+          <div v-for="(h, i) in userBarH" :key="'u' + i" class="admin-chart-bars__col">
+            <div
+              class="admin-chart-bars__bar"
+              :style="{ height: h + 'px' }"
+              :title="`${chartLabels[i] ?? ''}：${userVals[i] ?? 0} 人`"
+            />
+            <span class="admin-chart-bars__label">{{ chartLabels[i] ?? '' }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+    <section class="admin-card p-5 xl:col-span-2">
+      <div class="flex justify-between items-start gap-2 mb-3">
+        <h2 class="text-sm font-bold text-slate-800">指令下发量</h2>
+        <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ hourCaption }}</span>
+      </div>
+      <div class="admin-chart-area min-h-[14rem]">
+        <div class="admin-chart-bars min-h-[11rem]">
+          <div v-for="(h, i) in cmdBarH" :key="'c' + i" class="admin-chart-bars__col">
+            <div
+              class="admin-chart-bars__bar"
+              :style="{ height: h + 'px' }"
+              :title="`${chartLabels[i] ?? ''}：${cmdVals[i] ?? 0} 次`"
+            />
+            <span class="admin-chart-bars__label">{{ chartLabels[i] ?? '' }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="admin-card p-5">
+      <h2 class="text-sm font-bold text-slate-800 mb-4">维度摘要</h2>
+      <ul class="text-sm text-slate-600 space-y-3">
+        <li
+          v-for="(row, idx) in summaryRows"
+          :key="idx"
+          class="flex justify-between"
+          :class="idx < summaryRows.length - 1 ? 'border-b border-slate-100 pb-2' : ''"
+        >
+          <span>{{ row.label }}</span>
+          <span :class="row.valClass">{{ row.value }}</span>
+        </li>
+      </ul>
+    </section>
   </div>
 </template>
 
@@ -132,20 +434,38 @@ onMounted(() => {
   .lg\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+  .lg\:items-stretch {
+    align-items: stretch;
+  }
+ .lg\:max-w-xl {
+    max-width: 36rem;
+  }
+  .lg\:max-w-\[44rem\] {
+    max-width: 44rem;
+  }
+  .lg\:w-auto {
+    width: auto;
+  }
+  .lg\:shrink-0 {
+    flex-shrink: 0;
+  }
+  .lg\:items-end {
+    align-items: flex-end;
+  }
 }
 @media (min-width: 1280px) {
+  .xl\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   .xl\:grid-cols-6 {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
-  .xl\:flex-row {
-    flex-direction: row;
+  .xl\:col-span-2 {
+    grid-column: span 2 / span 2;
   }
-  .xl\:items-center {
-    align-items: center;
-  }
-  .xl\:justify-between {
-    justify-content: space-between;
-  }
+}
+.flex {
+  display: flex;
 }
 .flex-col {
   flex-direction: column;
@@ -153,10 +473,76 @@ onMounted(() => {
 .gap-4 {
   gap: 1rem;
 }
+.gap-3 {
+  gap: 0.75rem;
+}
+.gap-2 {
+  gap: 0.5rem;
+}
+.gap-1 {
+  gap: 0.25rem;
+}
 .mb-6 {
   margin-bottom: 1.5rem;
 }
-.h-48 {
-  height: 12rem;
+.mb-4 {
+  margin-bottom: 1rem;
+}
+.mb-3 {
+  margin-bottom: 0.75rem;
+}
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+.space-y-3 > * + * {
+  margin-top: 0.75rem;
+}
+.min-h-0 {
+  min-height: 0;
+}
+.min-h-\[14rem\] {
+  min-height: 14rem;
+}
+.min-h-\[11rem\] {
+  min-height: 11rem;
+}
+.h-\[260px\] {
+  height: 260px;
+}
+.h-full {
+  height: 100%;
+}
+.shrink-0 {
+  flex-shrink: 0;
+}
+.flex-1 {
+  flex: 1 1 0%;
+}
+.min-w-0 {
+  min-width: 0;
+}
+.w-full {
+  width: 100%;
+}
+.max-w-xl {
+  max-width: 36rem;
+}
+.max-w-\[14rem\] {
+  max-width: 14rem;
+}
+.text-right {
+  text-align: right;
+}
+.bg-primary {
+  background-color: #2563eb;
+}
+.pointer-events-none {
+  pointer-events: none;
+}
+.opacity-90 {
+  opacity: 0.9;
+}
+.cursor-crosshair {
+  cursor: crosshair;
 }
 </style>

@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.admin_dashboard_charts import build_chart_series, resolve_dashboard_window
 from app.config import get_settings
 from app.db import get_session
 from app.deps import get_current_admin_id
@@ -67,36 +68,23 @@ async def admin_password(
     return ok({})
 
 
-def _dashboard_period_start(period: str, now: datetime) -> datetime:
-    d = now.date()
-    if period == "today":
-        return datetime.combine(d, time.min)
-    if period == "d7":
-        return now - timedelta(days=7)
-    if period == "d30":
-        return now - timedelta(days=30)
-    if period == "week":
-        monday = d - timedelta(days=d.weekday())
-        return datetime.combine(monday, time.min)
-    if period == "month":
-        return datetime.combine(d.replace(day=1), time.min)
-    if period == "year":
-        return datetime.combine(d.replace(month=1, day=1), time.min)
-    return datetime.combine(d, time.min)
-
-
 @router.get("/dashboard/metrics")
 async def dashboard_metrics(
     period: str = Query(
         "today",
-        description="统计周期：today|week|month|year|d7|d30",
+        description="统计周期：today|week|month|year|d7|d30；与 from/to 二选一或同时给 from+to 走自定义",
         pattern="^(today|week|month|year|d7|d30)$",
     ),
+    range_from: Optional[date] = Query(None, alias="from"),
+    range_to: Optional[date] = Query(None, alias="to"),
     _admin_id: int = Depends(get_current_admin_id),
     session: AsyncSession = Depends(get_session),
 ):
     settings = get_settings()
     now = datetime.now()
+    rf, rt = range_from, range_to
+    if rf is None or rt is None:
+        rf, rt = None, None
     uc = await session.execute(select(func.count()).select_from(User))
     user_count = int(uc.scalar_one() or 0)
     dc = await session.execute(select(func.count()).select_from(Device))
@@ -123,30 +111,42 @@ async def dashboard_metrics(
     )
     cmd_today = int(cmd_c.scalar_one() or 0)
 
-    p_start = _dashboard_period_start(period, now)
+    p_start, p_end = resolve_dashboard_window(period, now, rf, rt)
     cmd_p = await session.execute(
         select(func.count())
         .select_from(DeviceOperationLog)
-        .where(DeviceOperationLog.action == "command.sent", DeviceOperationLog.created_at >= p_start)
+        .where(
+            DeviceOperationLog.action == "command.sent",
+            DeviceOperationLog.created_at >= p_start,
+            DeviceOperationLog.created_at <= p_end,
+        )
     )
     commands_in_period = int(cmd_p.scalar_one() or 0)
 
     new_users_p = await session.execute(
-        select(func.count()).select_from(User).where(User.created_at >= p_start)
+        select(func.count()).select_from(User).where(User.created_at >= p_start, User.created_at <= p_end)
     )
     users_new_in_period = int(new_users_p.scalar_one() or 0)
 
     sched_p = await session.execute(
         select(func.count())
         .select_from(DeviceOperationLog)
-        .where(DeviceOperationLog.action == "schedule.run", DeviceOperationLog.created_at >= p_start)
+        .where(
+            DeviceOperationLog.action == "schedule.run",
+            DeviceOperationLog.created_at >= p_start,
+            DeviceOperationLog.created_at <= p_end,
+        )
     )
     schedule_runs_in_period = int(sched_p.scalar_one() or 0)
 
     share_p = await session.execute(
         select(func.count())
         .select_from(UserDevice)
-        .where(UserDevice.role == UserDeviceRole.shared, UserDevice.created_at >= p_start)
+        .where(
+            UserDevice.role == UserDeviceRole.shared,
+            UserDevice.created_at >= p_start,
+            UserDevice.created_at <= p_end,
+        )
     )
     share_bindings_in_period = int(share_p.scalar_one() or 0)
 
@@ -176,9 +176,13 @@ async def dashboard_metrics(
         reverse=True,
     )
 
+    charts = await build_chart_series(session, p_start, p_end, settings.device_offline_seconds)
+
     return ok(
         {
             "period": period,
+            "range_from": rf.isoformat() if rf else None,
+            "range_to": rt.isoformat() if rt else None,
             "user_count": user_count,
             "device_count": device_count,
             "online_count": online_count,
@@ -191,6 +195,7 @@ async def dashboard_metrics(
             "share_bindings_in_period": share_bindings_in_period,
             "pending_fw_upgrade_count": pending_fw,
             "fw_distribution": fw_distribution,
+            "charts": charts,
         }
     )
 
