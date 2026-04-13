@@ -15,10 +15,20 @@ class Settings(BaseSettings):
             return ""
         return str(v).strip()
 
+    @field_validator("public_base_url", mode="before")
+    @classmethod
+    def _public_base_url_with_scheme(cls, v: object) -> str:
+        b = str(v or "").strip().rstrip("/")
+        if not b:
+            return "http://127.0.0.1:8000"
+        if "://" not in b:
+            return f"https://{b}"
+        return b
+
     app_name: str = "SmartRelay API"
     api_prefix: str = "/api/v1"
 
-    # Server (for firmware URLs and docs)
+    # Server (for firmware URLs and docs)；须含协议；若仅配域名将自动补 https://
     public_base_url: str = "http://127.0.0.1:8000"
     listen_host: str = "0.0.0.0"
     listen_port: int = 8000

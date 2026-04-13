@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime, time as dt_time
 from typing import Any, Optional
 
@@ -27,7 +28,7 @@ from app.models import (
     UserDevice,
     UserDeviceRole,
 )
-from app.mqtt_service import clear_ota_progress, get_ota_progress_snapshot, mqtt_publisher
+from app.mqtt_service import clear_ota_progress_state, mqtt_publisher
 from app.response import err, ok
 from app.schedule_sync import build_schedules_payload
 from app.schemas import BindBody, CommandBody, PatchDeviceBody, ScheduleCreateBody, ShareBody
@@ -74,7 +75,7 @@ async def _execute_ota_firmware_push(
         "payload": payload,
     }
     topic = f"sr/v1/device/{dev.device_id}/ota"
-    clear_ota_progress(dev.device_id)
+    await clear_ota_progress_state(session, dev)
     await insert_command_sent(
         session,
         device_pk=dev.id,
@@ -536,4 +537,27 @@ async def ota_progress_poll(
     pair = await _get_user_device(session, user_id, device_id)
     if not pair:
         return err(NOT_FOUND, "未找到设备")
-    return ok(get_ota_progress_snapshot(device_id))
+    _, dev = pair
+    r = await session.execute(
+        select(
+            Device.ota_progress_percent,
+            Device.ota_progress_phase,
+            Device.ota_progress_ts_ms,
+        ).where(Device.id == dev.id)
+    )
+    row = r.one()
+    pct, phase, ts_ms = row[0], row[1], row[2]
+    empty = (pct is None) and (ts_ms is None) and (not (phase or "").strip())
+    if empty:
+        return ok({"active": False, "percent": None, "phase": None, "ts": None})
+    # ota_progress_ts_ms 为服务端写入进度时的 Unix 毫秒，用于过期清理
+    if isinstance(ts_ms, (int, float)) and ts_ms > 0 and (time.time() * 1000 - ts_ms) > 600_000:
+        return ok({"active": False, "percent": None, "phase": None, "ts": None})
+    return ok(
+        {
+            "active": True,
+            "percent": int(pct) if pct is not None else None,
+            "phase": (phase or "") if phase else "",
+            "ts": ts_ms,
+        }
+    )

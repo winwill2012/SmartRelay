@@ -35,6 +35,41 @@ async def ensure_devices_relay_on(session: AsyncSession) -> None:
         raise
 
 
+async def ensure_devices_ota_progress_columns(session: AsyncSession) -> None:
+    """devices OTA 进度：MQTT 与 HTTP 可能不在同一进程，进度落库供小程序轮询。"""
+    stmts = [
+        (
+            "ota_progress_percent",
+            "ALTER TABLE devices ADD COLUMN ota_progress_percent SMALLINT NULL "
+            "COMMENT 'OTA进度0-100' AFTER last_seen_at",
+        ),
+        (
+            "ota_progress_phase",
+            "ALTER TABLE devices ADD COLUMN ota_progress_phase VARCHAR(64) NULL "
+            "COMMENT 'OTA阶段' AFTER ota_progress_percent",
+        ),
+        (
+            "ota_progress_ts_ms",
+            "ALTER TABLE devices ADD COLUMN ota_progress_ts_ms BIGINT NULL "
+            "COMMENT 'OTA进度时间戳ms' AFTER ota_progress_phase",
+        ),
+    ]
+    for _col, ddl in stmts:
+        try:
+            await session.execute(text(ddl))
+            await session.commit()
+            logger.info("db migration: added devices.%s", _col)
+        except OperationalError as e:
+            await session.rollback()
+            orig = getattr(e, "orig", None)
+            args = getattr(orig, "args", ()) if orig is not None else ()
+            code = args[0] if args else None
+            msg = str(orig or e)
+            if code == 1060 or "Duplicate column" in msg or "duplicate column" in msg.lower():
+                continue
+            raise
+
+
 async def ensure_user_notifications_table(session: AsyncSession) -> None:
     """站内通知表：定时任务执行结果等。"""
     try:

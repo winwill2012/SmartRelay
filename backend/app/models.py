@@ -11,6 +11,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Index,
+    SmallInteger,
     String,
     Text,
     Time,
@@ -82,6 +83,9 @@ class Device(Base):
     fw_version: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     relay_on: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=False), nullable=True)
+    ota_progress_percent: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    ota_progress_phase: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    ota_progress_ts_ms: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
 
     user_devices: Mapped[list["UserDevice"]] = relationship(back_populates="device")
