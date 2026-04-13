@@ -6,8 +6,6 @@ backend/.env
 *.local
 
 # 工具与 IDE
-.cursor/
-
 
 # Python
 .venv/

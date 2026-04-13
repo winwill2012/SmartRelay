@@ -2,6 +2,7 @@ import logging
 import time
 from datetime import datetime, time as dt_time
 from typing import Any, Optional
+from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import delete, func, select
@@ -39,6 +40,30 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _sanitize_ota_url(raw: str) -> str:
+    s = (raw or "").strip().strip("'").strip('"')
+    s = "".join(ch for ch in s if " " <= ch <= "~")
+    if s.startswith("//"):
+        s = f"https:{s}"
+    if "://" not in s and s:
+        s = f"https://{s}"
+    if not s:
+        return s
+    p = urlsplit(s)
+    scheme = (p.scheme or "https").lower()
+    netloc = p.netloc
+    path = p.path or "/"
+    if "?" in netloc:
+        netloc = netloc.split("?")[-1]
+    while netloc and not netloc[0].isalnum():
+        netloc = netloc[1:]
+    low = path.lower()
+    idx = low.find(".bin")
+    if idx >= 0:
+        path = path[: idx + 4]
+    return urlunsplit((scheme, netloc, path, p.query, ""))
+
+
 async def _execute_ota_firmware_push(
     session: AsyncSession,
     *,
@@ -61,9 +86,10 @@ async def _execute_ota_firmware_push(
         return err(PARAM_ERROR, "当前已是最新版本")
 
     cmd_id = new_cmd_id()
+    ota_url = _sanitize_ota_url(fw.file_url)
     payload: dict[str, Any] = {
         "version": fw.version,
-        "url": fw.file_url,
+        "url": ota_url,
         "md5": fw.file_md5,
         "size": int(fw.file_size),
     }

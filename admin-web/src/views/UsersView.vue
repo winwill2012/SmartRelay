@@ -229,7 +229,6 @@ onMounted(() => {
   <p v-if="loading" class="text-sm text-slate-500 mb-2 mt-4">加载中…</p>
 
   <div class="admin-table-wrap hidden md:block mt-4">
-    <p class="admin-table-hint">昵称与账号标识已按合规要求脱敏展示。</p>
     <table class="min-w-[720px] w-full text-left text-sm">
       <thead class="text-slate-600 border-b border-slate-200">
         <tr>

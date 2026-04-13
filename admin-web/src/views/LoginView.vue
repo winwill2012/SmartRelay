@@ -17,7 +17,7 @@ const reauthNotice = computed(() => route.query.reauth === '1')
 function formatLoginError(e: unknown): string {
   if (isAxiosError(e)) {
     if (e.code === 'ERR_NETWORK' || e.message === 'Network Error') {
-      return `无法连接后端（当前 API：${apiBase}）。请确认已启动 SmartRelay 后端（uvicorn）且端口与代理一致。`
+      return `无法连接后端（当前 API：${apiBase}）。请确认已启动一念开合后端（uvicorn）且端口与代理一致。`
     }
     if (e.response?.data && typeof e.response.data === 'object') {
       const d = e.response.data as { message?: string; detail?: unknown }
@@ -50,7 +50,7 @@ async function onSubmit(e: Event) {
   <div class="min-h-screen flex flex-col items-center justify-center px-4 py-12 admin-body">
     <div class="w-full max-w-md">
       <div class="text-center mb-8">
-        <p class="text-xs font-medium uppercase tracking-wider text-slate-500">SmartRelay · 管理后台</p>
+        <p class="text-xs font-medium uppercase tracking-wider text-slate-500">一念开合 · 管理后台</p>
         <h1 class="text-2xl font-bold text-slate-900 mt-2">管理员登录</h1>
       </div>
 
@@ -120,7 +120,7 @@ async function onSubmit(e: Event) {
           {{ loading ? '登录中…' : '登录' }}
         </button>
       </form>
-      <p class="text-center text-xs text-slate-500 mt-6">© SmartRelay</p>
+      <p class="text-center text-xs text-slate-500 mt-6">© 一念开合</p>
     </div>
   </div>
 </template>

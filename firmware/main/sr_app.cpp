@@ -51,6 +51,8 @@ static bool s_prev_mqtt;
 static int64_t s_boot_press;
 static volatile bool s_ota_busy;
 static bool s_ble_runtime_active;
+static int s_last_ota_pub_pct = -1;
+static int64_t s_last_ota_pub_ms = 0;
 
 static int64_t now_ms(void) { return esp_timer_get_time() / 1000; }
 
@@ -169,15 +171,34 @@ static void publish_ack_err(const char *cmd_id, int code, const char *msg) {
 }
 
 static void publish_ota_progress(int pct, const char *phase) {
-  if (!sr_mqtt_connected()) return;
+  if (pct < 0) pct = 0;
+  if (pct > 100) pct = 100;
+  const char *ph = phase ? phase : "";
+  int64_t now = now_ms();
+  bool force = (pct <= 0) || (pct >= 100) || (strcmp(ph, "done") == 0);
+  bool duplicated = (pct == s_last_ota_pub_pct);
+  bool too_fast = (now - s_last_ota_pub_ms) < 800;  // OTA 下载阶段限速，避免 MQTT 写爆
+  if (!force && duplicated && too_fast) return;
+  if (pct == 0 || pct >= 100 || (pct % 10 == 0) || force)
+    ESP_LOGI(TAG, "OTA progress mqtt pct=%d phase=%s connected=%d", pct, ph, sr_mqtt_connected() ? 1 : 0);
+  if (!sr_mqtt_connected()) {
+    ESP_LOGW(TAG, "OTA progress skip publish (mqtt down) pct=%d", pct);
+    return;
+  }
   cJSON *o = cJSON_CreateObject();
   cJSON_AddNumberToObject(o, "ts", (double)now_ms());
   cJSON_AddNumberToObject(o, "percent", pct);
-  cJSON_AddStringToObject(o, "phase", phase ? phase : "");
+  cJSON_AddStringToObject(o, "phase", ph);
   char *js = cJSON_PrintUnformatted(o);
   cJSON_Delete(o);
   if (js) {
-    sr_mqtt_publish(sr_mqtt_topic_otap(), js, strlen(js), 1, 0);
+    // OTA 进度是可丢失遥测，使用 QoS0 降低发送拥塞导致的断链风险
+    int pr = sr_mqtt_publish(sr_mqtt_topic_otap(), js, strlen(js), 0, 0);
+    if (pr < 0) ESP_LOGW(TAG, "OTA progress publish failed ret=%d", pr);
+    else {
+      s_last_ota_pub_pct = pct;
+      s_last_ota_pub_ms = now;
+    }
     cJSON_free(js);
   }
 }
@@ -469,11 +490,33 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
       cJSON_Delete(root);
       return;
     }
+    // url/md5 指针来自 cJSON 内存；删除 root 后将失效，需先深拷贝
+    std::string url_copy(url);
+    std::string md5_copy(md5e ? md5e : "");
+    {
+      char hostpeek[96];
+      hostpeek[0] = 0;
+      if (url_copy[0]) {
+        const char *p = strstr(url_copy.c_str(), "://");
+        p = p ? p + 3 : url_copy.c_str();
+        size_t n = 0;
+        while (p[n] && p[n] != '/' && n + 1 < sizeof(hostpeek)) {
+          hostpeek[n] = p[n];
+          n++;
+        }
+        hostpeek[n] = 0;
+      }
+      ESP_LOGI(TAG, "OTA cmd accepted url_host=%s size_hint=%u md5_len=%u", hostpeek, (unsigned)sz,
+               (unsigned)(md5e ? strlen(md5e) : 0));
+    }
     publish_ack_ok(cmd_id, cJSON_CreateObject());
     cJSON_Delete(root);
+    s_last_ota_pub_pct = -1;
+    s_last_ota_pub_ms = 0;
     s_ota_busy = true;
-    sr_ota_https(url, md5e, sz, publish_ota_progress);
+    sr_ota_https(url_copy.c_str(), md5_copy.c_str(), sz, publish_ota_progress);
     s_ota_busy = false;
+    ESP_LOGW(TAG, "OTA sr_ota_https returned (unexpected if success path rebooted)");
     return;
   }
 
@@ -545,7 +588,7 @@ void sr_app_main(void) {
 
   sr_relay_init();
   sr_led_init();
-  sr_led_set_mode(SR_LED_PROVISION);
+  sr_led_set_mode(SR_LED_NET_FAIL_BLINK);
 
   ESP_ERROR_CHECK(nvs_flash_init());
   sr_schedule_load();
@@ -607,7 +650,7 @@ void sr_app_main(void) {
       if (sr_wifi_has_ip()) {
         sr_mqtt_start();
         provision_await_mqtt_and_publish();
-        sr_led_set_mode(SR_LED_BREATH);
+        sr_led_set_mode(SR_LED_ONLINE_SOLID);
       }
     }
 
@@ -653,9 +696,17 @@ void sr_app_main(void) {
         if (mqtt_now) {
           publish_lwt_online();
           publish_report_on_mqtt_connected_edge();
-          sr_led_set_mode(SR_LED_BREATH);
+          sr_led_set_mode(SR_LED_ONLINE_SOLID);
         }
         s_prev_mqtt = mqtt_now;
+      }
+
+      if (s_ota_busy) {
+        sr_led_set_mode(SR_LED_OTA_BREATH);
+      } else if (sr_wifi_has_ip() && sr_mqtt_connected()) {
+        sr_led_set_mode(SR_LED_ONLINE_SOLID);
+      } else {
+        sr_led_set_mode(SR_LED_NET_FAIL_BLINK);
       }
 
       if (!s_ota_busy && sr_mqtt_connected() && (now_ms() - s_last_hb) >= HEARTBEAT_INTERVAL_MS) {

@@ -5,9 +5,18 @@
 #include "esp_timer.h"
 #include <cmath>
 
-static sr_led_mode_t s_mode = SR_LED_PROVISION;
+static sr_led_mode_t s_mode = SR_LED_NET_FAIL_BLINK;
 static const ledc_channel_t k_ch = LEDC_CHANNEL_0;
 static const ledc_timer_t k_timer = LEDC_TIMER_0;
+// SmartRelay 当前硬件（IO8 指示灯）为低电平点亮。
+static const bool k_led_active_low = true;
+
+static inline int led_duty_from_brightness(int bright_0_1023) {
+  int b = bright_0_1023;
+  if (b < 0) b = 0;
+  if (b > 1023) b = 1023;
+  return k_led_active_low ? (1023 - b) : b;
+}
 
 void sr_led_init(void) {
   ledc_timer_config_t t = {};
@@ -32,7 +41,7 @@ void sr_led_init(void) {
 void sr_led_set_mode(sr_led_mode_t m) { s_mode = m; }
 
 void sr_led_tick(void) {
-  if (s_mode == SR_LED_PROVISION) {
+  if (s_mode == SR_LED_NET_FAIL_BLINK) {
     static int64_t t0_us = 0;
     int64_t now = esp_timer_get_time();
     if (t0_us == 0) t0_us = now;
@@ -40,13 +49,19 @@ void sr_led_tick(void) {
       t0_us = now;
       static bool on = false;
       on = !on;
-      ledc_set_duty(LEDC_LOW_SPEED_MODE, k_ch, on ? 1023 : 0);
+      int duty = led_duty_from_brightness(on ? 1023 : 0);
+      ledc_set_duty(LEDC_LOW_SPEED_MODE, k_ch, duty);
       ledc_update_duty(LEDC_LOW_SPEED_MODE, k_ch);
     }
-  } else {
+  } else if (s_mode == SR_LED_OTA_BREATH) {
     int64_t ms = esp_timer_get_time() / 1000;
     float ph = (float)ms / 2500.0f * 2.0f * 3.1415926f;
-    int duty = (int)((sinf(ph) * 0.5f + 0.5f) * 900) + 50;
+    int bright = (int)((sinf(ph) * 0.5f + 0.5f) * 900) + 50;
+    int duty = led_duty_from_brightness(bright);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, k_ch, duty);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, k_ch);
+  } else {
+    int duty = led_duty_from_brightness(1023);
     ledc_set_duty(LEDC_LOW_SPEED_MODE, k_ch, duty);
     ledc_update_duty(LEDC_LOW_SPEED_MODE, k_ch);
   }

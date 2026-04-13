@@ -493,9 +493,6 @@ onUnmounted(() => {
       <ul class="text-sm text-slate-600 space-y-1.5 list-disc pl-4">
         <li v-for="(line, i) in popLines" :key="i">{{ line }}</li>
       </ul>
-      <p class="text-xs text-slate-400 mt-3 leading-relaxed">
-        仅列表中已启用的版本会对设备开放更新；灰度等策略以服务端配置为准。
-      </p>
     </div>
   </Teleport>
 </template>

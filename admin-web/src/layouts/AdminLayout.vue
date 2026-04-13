@@ -21,7 +21,7 @@ const title = computed(() => {
     firmware: '固件管理',
     'account-password': '账号 · 修改密码'
   }
-  return m[String(route.name)] || 'SmartRelay'
+  return m[String(route.name)] || '一念开合'
 })
 
 const isDashboard = computed(() => route.name === 'dashboard')
@@ -135,10 +135,10 @@ onUnmounted(() => {
       aria-label="侧栏导航"
     >
       <div class="admin-sidebar__head">
-        <RouterLink to="/dashboard" class="admin-sidebar__brand" title="SmartRelay 控制台" @click="sidebarOpen = false">
+        <RouterLink to="/dashboard" class="admin-sidebar__brand" title="一念开合 控制台" @click="sidebarOpen = false">
           <span class="admin-sidebar__logo">SR</span>
           <span class="admin-sidebar__brand-txt">
-            <strong>SmartRelay</strong>
+            <strong>一念开合</strong>
             <span class="admin-sidebar__brand-sub">控制台</span>
           </span>
         </RouterLink>

@@ -3,7 +3,7 @@
 #include "driver/gpio.h"
 
 /** 固件版本 — OTA 后 report.fw_version 与此一致 */
-#define FW_VERSION "1.0.1"
+#define FW_VERSION "1.0.5"
 
 #define PIN_RELAY GPIO_NUM_4
 #define PIN_LED GPIO_NUM_8

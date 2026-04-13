@@ -1,0 +1,15 @@
+---
+description: SmartRelay 数据库结构变更后由助手直接执行 SQL，不推给用户手动跑
+alwaysApply: true
+---
+
+# 数据库迁移执行约定
+
+- 连接参数见项目根目录 `resource.md`；密码必须通过环境变量传入（如 `SR_MYSQL_PASS`），避免在终端一行里写死密码导致 PowerShell 误解析 `$`。
+- 当新增或修改 `database/` 下 `.sql`、或《协议标准.md》附录 DDL 时：**在本机用 Python 执行**，不要只写说明让用户自己跑。
+- 执行方式：在项目根目录设置 `SR_MYSQL_PASS` 后运行  
+  `python database/apply.py`  
+  或指定文件：`python database/apply.py database/migrations/xxx.sql`
+- 建库后若需默认管理员 **`admin` / `admin123`**（bcrypt），执行：  
+  `python database/seed_admin.py`（勿在 PowerShell 一行里内联含 `$` 的 bcrypt 字符串，会截断）。首次也可由后端启动时 `ensure_default_admin` 写入。
+- 需要 `pymysql`（与当前环境一致即可）。

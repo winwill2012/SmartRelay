@@ -1,0 +1,36 @@
+---
+description: 修改后端等服务器端代码后自动提交、推送并在生产机拉取与重启 smartrelay-api
+alwaysApply: true
+---
+
+# 生产后端自动更新与重启
+
+**不必等用户再说「部署」**：凡本会话中**已完成**对 `backend/`（及需随仓库一并上线的服务端相关脚本/配置）的修改，**默认**在本机 **git 提交并推送**，并 **SSH 生产机拉取、装依赖、重启 `smartrelay-api`**。仅当用户明确说 **不要部署 / 仅本地 / 稍后再说** 时跳过。
+
+## 生产环境约定
+
+- **主机**：`root@119.29.197.186`（本机已配置免密 SSH 时使用 `BatchMode` 非交互执行）。
+- **代码目录**：`/opt/smart-relay`，与 `deploy/server-bootstrap.sh` 一致。
+- **服务名**：`smartrelay-api`（`WorkingDirectory=/opt/smart-relay/backend`）。
+
+## 推荐命令序列
+
+1. **本机**（在仓库根目录 `G:/SmartRelay`）：将本次与服务端相关的改动 `git add` 后 `git commit`（信息用简短中文说明），再 `git push origin master`（或当前跟踪的上游分支）。
+2. **服务器**（一条 SSH 内顺序执行）：
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=15 root@119.29.197.186 "set -e; cd /opt/smart-relay && git fetch origin && git reset --hard origin/master && cd /opt/smart-relay/backend && ./.venv/bin/pip install -r requirements.txt -q && systemctl restart smartrelay-api && sleep 2 && systemctl --no-pager status smartrelay-api && curl -sS http://127.0.0.1:8000/health"
+```
+
+3. 若 **`git push` 失败**（凭据、网络）：不要强行部署；向用户说明并保留本地提交，由用户处理推送后再部署。
+4. 若 **SSH 失败**：说明原因并给出同上命令供用户手动执行。
+
+## 与数据库迁移的关系
+
+- 若本次变更包含 **库表结构** 且需作用生产库：在遵守 `database-migrations.mdc` 的前提下执行迁移后，再按上节重启后端（或确认启动无报错）。
+- **仅改后端逻辑、无 DDL**：一般只需推送 +拉取 + `pip` + `restart`。
+
+## 注意
+
+- 服务器通过 **`git reset --hard origin/<branch>`** 更新，须保证所需改动已进远程分支；不要假设未推送的代码已在服务器上。
+- 不要将密钥、密码写入规则正文；连接数据库仍用环境变量（见 `database-migrations.mdc`）。

@@ -5,8 +5,9 @@ extern "C" {
 #endif
 
 typedef enum {
-  SR_LED_PROVISION = 0,
-  SR_LED_BREATH = 1,
+  SR_LED_NET_FAIL_BLINK = 0,
+  SR_LED_OTA_BREATH = 1,
+  SR_LED_ONLINE_SOLID = 2,
 } sr_led_mode_t;
 
 void sr_led_init(void);

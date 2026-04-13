@@ -10,11 +10,11 @@
     <block wx:if="{{result.latest}}">
       <text class="lab">设备当前版本</text>
       <text class="val mono">{{result.current_version}}</text>
-      <text class="lab row-gap">服务器最新版本（已启用）</text>
+      <text class="lab row-gap">服务器最新版本</text>
       <text class="ver">{{result.latest.version}}</text>
       <text wx:if="{{result.latest.release_notes}}" class="notes">{{result.latest.release_notes}}</text>
       <block wx:if="{{result.update_available}}">
-        <text class="msg hint-new">有新版本可升级</text>
+        <text class="status-chip status-chip--warn">有新版本可升级</text>
         <button
           class="btn-upgrade"
           loading="{{otaBusy}}"
@@ -22,7 +22,7 @@
           bindtap="onStartOta"
         >立即更新</button>
       </block>
-      <text wx:else class="msg hint-ok">已与此版本一致</text>
+      <text wx:else class="status-chip status-chip--ok">已与此版本一致</text>
     </block>
     <block wx:else>
       <text class="lab">服务器最新版本</text>
@@ -32,11 +32,37 @@
     <text wx:if="{{result.message}}" class="msg">{{result.message}}</text>
   </view>
 
-  <view wx:if="{{otaBusy && otaProgress}}" class="card ota-progress-card">
+  <view wx:if="{{otaBusy || otaProgress || otaPollHint}}" class="card ota-progress-card">
     <text class="lab">升级进度</text>
-    <text class="ota-phase">{{otaProgress.phase ? otaProgress.phase : '—'}}</text>
-    <text class="ota-pct-num">{{otaProgressPercent}}%</text>
-    <progress class="ota-bar" percent="{{otaProgressPercent}}" show-info active stroke-width="10" />
-    <text class="msg ota-hint">进度由设备经 MQTT 上报，完成后设备将自动重启。</text>
+    <text class="ota-phase">{{otaStageText || (otaProgress.phase ? otaProgress.phase : '—')}}</text>
+
+    <view class="ota-flow">
+      <view class="ota-step {{flowDownloadState}}">
+        <view class="dot"></view>
+        <text>下载</text>
+      </view>
+      <view class="ota-line {{flowInstallState == 'pending' ? '' : 'active'}}"></view>
+      <view class="ota-step {{flowInstallState}}">
+        <view class="dot"></view>
+        <text>更新</text>
+      </view>
+      <view class="ota-line {{flowRebootState == 'pending' ? '' : 'active'}}"></view>
+      <view class="ota-step {{flowRebootState}}">
+        <view class="dot"></view>
+        <text>重启</text>
+      </view>
+      <view class="ota-line {{flowDoneState == 'pending' ? '' : 'active'}}"></view>
+      <view class="ota-step {{flowDoneState}}">
+        <view class="dot"></view>
+        <text>完成</text>
+      </view>
+    </view>
+
+    <progress class="ota-bar" percent="{{otaProgressPercent}}" show-info stroke-width="10" active="{{false}}" />
+    <view wx:if="{{otaPollHint && flowDoneState == 'done'}}" class="ota-success">
+      <text class="ota-success-icon">✓</text>
+      <text class="ota-success-text">恭喜，{{otaPollHint}}</text>
+    </view>
+    <text wx:elif="{{otaPollHint}}" class="msg ota-hint warn">{{otaPollHint}}</text>
   </view>
 </view>

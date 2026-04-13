@@ -257,7 +257,6 @@ onMounted(() => {
   <p v-if="loading" class="text-sm text-slate-500 mb-2">加载中…</p>
 
   <div class="admin-table-wrap hidden md:block">
-    <p class="admin-table-hint">「最近上线」为设备最后一次与云端通信时间（按日筛选为闭区间）。</p>
     <table class="min-w-[800px] w-full text-left text-sm">
       <thead class="text-slate-600 border-b border-slate-200">
         <tr>
