@@ -1,4 +1,4 @@
-"""管理后台大屏：按时间桶从数据库聚合在线率、新增用户、指令下发。"""
+"""管理后台大屏：按时间桶从数据库聚合在线设备数、新增用户、指令下发。"""
 
 from __future__ import annotations
 
@@ -89,15 +89,12 @@ def chart_bucket_specs(ps: datetime, pe: datetime) -> List[Tuple[datetime, datet
     return out[:12]
 
 
-async def online_rate_at_instant(session: AsyncSession, instant: datetime, offline_sec: int) -> float:
+async def online_count_at_instant(session: AsyncSession, instant: datetime, offline_sec: int) -> int:
+    """桶末时点：last_seen 在离线阈值内的设备数量（与在线判定口径一致）。"""
     thr = instant - timedelta(seconds=offline_sec)
-    tot = int((await session.scalar(select(func.count()).select_from(Device))) or 0)
-    if tot == 0:
-        return 0.0
-    on = int(
+    return int(
         (await session.scalar(select(func.count()).select_from(Device).where(Device.last_seen_at >= thr))) or 0
     )
-    return round(100.0 * on / tot, 1)
 
 
 async def count_users_between(session: AsyncSession, bs: datetime, be_excl: datetime) -> int:
@@ -136,7 +133,7 @@ async def build_chart_series(
 ) -> dict:
     specs = chart_bucket_specs(p_start, p_end)
     labels: List[str] = []
-    online_vals: List[float] = []
+    online_count_vals: List[int] = []
     user_vals: List[int] = []
     cmd_vals: List[int] = []
 
@@ -145,7 +142,7 @@ async def build_chart_series(
         te = be_excl - timedelta(seconds=1)
         if te < bs:
             te = bs
-        online_vals.append(await online_rate_at_instant(session, te, offline_sec))
+        online_count_vals.append(await online_count_at_instant(session, te, offline_sec))
         user_vals.append(await count_users_between(session, bs, be_excl))
         cmd_vals.append(await count_commands_between(session, bs, be_excl))
 
@@ -160,11 +157,11 @@ async def build_chart_series(
 
     return {
         "labels": labels,
-        "online_rate": online_vals,
+        "online_count": online_count_vals,
         "new_users": user_vals,
         "commands": cmd_vals,
         "captions": {
-            "line": f"在线率 · {cap_u}（桶末时点）",
+            "line": f"在线设备数 · {cap_u}（桶末时点）",
             "users": f"新增用户 · {cap_u}",
             "commands": f"指令下发 · {cap_u}",
         },

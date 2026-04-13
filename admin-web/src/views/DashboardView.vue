@@ -7,7 +7,7 @@ type PeriodId = 'today' | 'week' | 'month' | 'year' | 'd7' | 'd30'
 
 type ChartsPayload = {
   labels: string[]
-  online_rate: number[]
+  online_count: number[]
   new_users: number[]
   commands: number[]
   captions?: { line?: string; users?: string; commands?: string }
@@ -68,7 +68,7 @@ const chartLabels = computed(() => {
 
 const lineValues = computed(() => {
   const c = charts.value
-  const v = c?.online_rate
+  const v = c?.online_count
   return v?.length ? v : [0]
 })
 
@@ -89,11 +89,35 @@ const lineChart = computed(() => buildLineChart(lineValues.value, chartLabels.va
 const userBarH = computed(() => barHeights(userVals.value))
 const cmdBarH = computed(() => barHeights(cmdVals.value, Math.max(...cmdVals.value, 1)))
 
-const lineCaption = computed(() => charts.value?.captions?.line ?? '在线率趋势')
+const lineCaption = computed(() => charts.value?.captions?.line ?? '在线设备数量')
 const barCaption = computed(() => charts.value?.captions?.users ?? '新增用户')
 const hourCaption = computed(() => charts.value?.captions?.commands ?? '指令下发')
 
+/** 自定义即时提示（原生 title 有约 0.5～1s 延迟） */
+const tipShow = ref(false)
+const tipX = ref(0)
+const tipY = ref(0)
+const tipText = ref('')
+
+function showTip(e: MouseEvent, text: string) {
+  tipText.value = text
+  tipX.value = e.clientX + 14
+  tipY.value = e.clientY + 14
+  tipShow.value = true
+}
+
+function moveTip(e: MouseEvent) {
+  if (!tipShow.value) return
+  tipX.value = e.clientX + 14
+  tipY.value = e.clientY + 14
+}
+
+function hideTip() {
+  tipShow.value = false
+}
+
 async function loadMetrics(period: PeriodId, opts?: { from: string; to: string }) {
+  hideTip()
   loading.value = true
   err.value = ''
   try {
@@ -208,56 +232,68 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="mb-6 space-y-3">
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-      <div class="min-w-0 flex-1 lg:max-w-xl">
+  <Teleport to="body">
+    <div
+      v-show="tipShow"
+      class="dash-chart-tip"
+      role="tooltip"
+      :style="{ left: tipX + 'px', top: tipY + 'px' }"
+    >
+      {{ tipText }}
+    </div>
+  </Teleport>
+
+  <!-- 与原型一致：左侧标题区贴主内容左缘，右侧时间 pill 贴右，同一行垂直对齐（≥1024px） -->
+  <div class="mb-6 space-y-4">
+    <div class="dash-overview-toolbar">
+      <div class="dash-overview-copy">
         <p class="text-sm font-semibold text-slate-800">多维度运营概览</p>
-        <p class="text-xs text-slate-500 mt-0.5">图表数据来自数据库聚合；悬停数据点或柱条查看数值</p>
+        <p class="text-xs text-slate-500 mt-0.5">
+          图表数据来自数据库聚合；切换时间范围查看不同维度，悬停图表可查看数值
+        </p>
       </div>
-      <div class="flex flex-col gap-2 w-full lg:w-auto lg:items-end lg:shrink-0 lg:max-w-[44rem]">
-        <div class="admin-time-pills flex flex-wrap justify-end gap-1" role="group" aria-label="统计时间范围">
-          <button
-            v-for="p in pills"
-            :key="p.id"
-            type="button"
-            class="admin-time-pill"
-            :class="{ 'is-active': activePill === p.id }"
-            :data-range="p.id"
-            @click="pickPill(p.id)"
-          >
-            {{ p.label }}
-          </button>
-          <button
-            type="button"
-            class="admin-time-pill"
-            :class="{ 'is-active': activePill === 'custom' }"
-            data-range="custom"
-            @click="onCustomPill"
-          >
-            自定义
-          </button>
-        </div>
-        <div
-          v-show="customPanelOpen"
-          class="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 rounded-xl border border-slate-200/90 bg-slate-50/80 px-4 py-3 w-full lg:max-w-xl"
+      <div class="admin-time-pills dash-overview-pills" role="group" aria-label="统计时间范围">
+        <button
+          v-for="p in pills"
+          :key="p.id"
+          type="button"
+          class="admin-time-pill"
+          :class="{ 'is-active': activePill === p.id }"
+          :data-range="p.id"
+          @click="pickPill(p.id)"
         >
-          <div class="min-w-0 flex-1">
-            <p class="text-xs font-bold text-slate-600 mb-2">自定义起止日期</p>
-            <div class="admin-date-range max-w-xl" role="group" aria-label="自定义统计起止日期">
-              <input v-model="rangeStart" type="date" aria-label="开始日期" />
-              <span class="admin-date-range__sep">至</span>
-              <input v-model="rangeEnd" type="date" aria-label="结束日期" />
-            </div>
-          </div>
-          <button
-            type="button"
-            class="shrink-0 rounded-lg bg-primary text-white px-5 py-2.5 text-sm font-semibold shadow-md shadow-blue-500/20 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
-            @click="applyCustomRange"
-          >
-            应用
-          </button>
+          {{ p.label }}
+        </button>
+        <button
+          type="button"
+          class="admin-time-pill"
+          :class="{ 'is-active': activePill === 'custom' }"
+          data-range="custom"
+          @click="onCustomPill"
+        >
+          自定义
+        </button>
+      </div>
+    </div>
+    <div
+      v-show="customPanelOpen"
+      class="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 rounded-xl border border-slate-200/90 bg-slate-50/80 px-4 py-3"
+    >
+      <div class="min-w-0 flex-1">
+        <p class="text-xs font-bold text-slate-600 mb-2">自定义起止日期</p>
+        <div class="admin-date-range max-w-xl" role="group" aria-label="自定义统计起止日期">
+          <input v-model="rangeStart" type="date" aria-label="开始日期" />
+          <span class="admin-date-range__sep">至</span>
+          <input v-model="rangeEnd" type="date" aria-label="结束日期" />
         </div>
       </div>
+      <button
+        type="button"
+        class="shrink-0 rounded-lg bg-primary text-white px-5 py-2.5 text-sm font-semibold shadow-md shadow-blue-500/20 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
+        @click="applyCustomRange"
+      >
+        应用
+      </button>
     </div>
   </div>
 
@@ -302,7 +338,7 @@ onMounted(() => {
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6 lg:items-stretch">
     <section class="admin-card p-5 flex flex-col min-h-0">
       <div class="flex justify-between items-start gap-2 mb-3 shrink-0">
-        <h2 class="text-sm font-bold text-slate-800">设备在线率趋势</h2>
+        <h2 class="text-sm font-bold text-slate-800">在线设备数量趋势</h2>
         <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ lineCaption }}</span>
       </div>
       <div class="admin-chart-area admin-chart-area--twin flex flex-col h-[260px]">
@@ -311,7 +347,7 @@ onMounted(() => {
           viewBox="0 0 400 140"
           preserveAspectRatio="xMidYMid meet"
           role="img"
-          aria-label="在线率折线图"
+          aria-label="在线设备数量折线图"
         >
           <defs>
             <linearGradient id="adminLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -351,13 +387,14 @@ onMounted(() => {
               :key="'pt' + i"
               :cx="v.x"
               :cy="v.y"
-              r="10"
+              r="12"
               fill="transparent"
               stroke="none"
               class="cursor-crosshair"
-            >
-              <title>{{ v.label }}：在线率 {{ v.value }}%</title>
-            </circle>
+              @mouseenter="showTip($event, `${v.label}：在线设备 ${v.value} 台`)"
+              @mousemove="moveTip"
+              @mouseleave="hideTip"
+            />
           </g>
         </svg>
       </div>
@@ -373,7 +410,9 @@ onMounted(() => {
             <div
               class="admin-chart-bars__bar"
               :style="{ height: h + 'px' }"
-              :title="`${chartLabels[i] ?? ''}：${userVals[i] ?? 0} 人`"
+              @mouseenter="showTip($event, `${chartLabels[i] ?? ''}：${userVals[i] ?? 0} 人`)"
+              @mousemove="moveTip"
+              @mouseleave="hideTip"
             />
             <span class="admin-chart-bars__label">{{ chartLabels[i] ?? '' }}</span>
           </div>
@@ -394,7 +433,9 @@ onMounted(() => {
             <div
               class="admin-chart-bars__bar"
               :style="{ height: h + 'px' }"
-              :title="`${chartLabels[i] ?? ''}：${cmdVals[i] ?? 0} 次`"
+              @mouseenter="showTip($event, `${chartLabels[i] ?? ''}：${cmdVals[i] ?? 0} 次`)"
+              @mousemove="moveTip"
+              @mouseleave="hideTip"
             />
             <span class="admin-chart-bars__label">{{ chartLabels[i] ?? '' }}</span>
           </div>
@@ -419,6 +460,39 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* 大屏概览行：左文案 + 右时间选择，与主区内边距左缘对齐 */
+.dash-overview-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+.dash-overview-copy {
+  text-align: left;
+  min-width: 0;
+}
+.dash-overview-pills {
+  width: 100%;
+  justify-content: flex-end;
+}
+@media (min-width: 1024px) {
+  .dash-overview-toolbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .dash-overview-copy {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-right: 1rem;
+  }
+  .dash-overview-pills {
+    width: auto;
+    flex: 0 0 auto;
+  }
+}
+
 .grid {
   display: grid;
 }
@@ -544,5 +618,25 @@ onMounted(() => {
 }
 .cursor-crosshair {
   cursor: crosshair;
+}
+</style>
+
+<style>
+/* Teleport 到 body，需非 scoped */
+.dash-chart-tip {
+  position: fixed;
+  z-index: 99999;
+  pointer-events: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #f8fafc;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 500;
+  max-width: min(20rem, calc(100vw - 1rem));
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.22);
+  white-space: nowrap;
+  transform: translateZ(0);
 }
 </style>
