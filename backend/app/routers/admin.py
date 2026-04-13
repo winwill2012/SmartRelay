@@ -1,5 +1,6 @@
 import hashlib
 import os
+import shutil
 from datetime import date, datetime, time, timedelta
 from typing import Optional
 
@@ -457,8 +458,9 @@ async def admin_firmware_upload(
     file: UploadFile = File(...),
     version: str = Form(...),
     release_notes: Optional[str] = Form(None),
-    is_active: bool = Form(False),
 ):
+    """新固件默认未启用。multipart 下 `bool`的 Form 在部分客户端会触发 422，故不在表单里接收 is_active。"""
+    is_active = False
     settings = get_settings()
     raw = await file.read()
     if not raw:
@@ -510,3 +512,23 @@ async def admin_firmware_patch(
         await session.execute(update(FirmwareVersion).where(FirmwareVersion.id == fw_id).values(is_active=body.is_active))
         await session.commit()
     return ok({"id": fw.id, "is_active": body.is_active if body.is_active is not None else fw.is_active})
+
+
+@router.delete("/firmware/{fw_id}")
+async def admin_firmware_delete(
+    fw_id: int,
+    _admin_id: int = Depends(get_current_admin_id),
+    session: AsyncSession = Depends(get_session),
+):
+    settings = get_settings()
+    r = await session.execute(select(FirmwareVersion).where(FirmwareVersion.id == fw_id))
+    fw = r.scalar_one_or_none()
+    if not fw:
+        return err(NOT_FOUND, "固件记录不存在")
+    safe_ver = "".join(c for c in fw.version if c.isalnum() or c in ".-_")
+    upload_subdir = os.path.join(settings.upload_dir, safe_ver) if safe_ver else ""
+    await session.delete(fw)
+    await session.commit()
+    if upload_subdir and os.path.isdir(upload_subdir):
+        shutil.rmtree(upload_subdir, ignore_errors=True)
+    return ok({"id": fw_id})

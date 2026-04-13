@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { getAdminFirmwareList, uploadFirmware, patchFirmware } from '../api/client'
+import { isAxiosError } from 'axios'
+import { getAdminFirmwareList, uploadFirmware, patchFirmware, deleteFirmware } from '../api/client'
 import { formatAdminDateTime } from '../lib/formatDisplay'
 import {
   parseVersionParts,
@@ -16,6 +17,26 @@ type FwRow = {
   is_active: boolean
   created_at: string
   device_count?: number
+}
+
+function formatUploadError(e: unknown): string {
+  if (isAxiosError(e) && e.response?.data && typeof e.response.data === 'object') {
+    const d = e.response.data as { message?: string; detail?: unknown }
+    if (typeof d.message === 'string' && d.message.trim()) return d.message
+    const det = d.detail
+    if (Array.isArray(det)) {
+      const parts = det
+        .map((item: { msg?: string; loc?: unknown }) => {
+          const loc = Array.isArray(item.loc) ? item.loc.filter(Boolean).join('.') : ''
+          const m = item.msg ?? ''
+          return loc ? `${loc}：${m}` : m
+        })
+        .filter(Boolean)
+      if (parts.length) return parts.join('；')
+    }
+    if (typeof det === 'string' && det) return det
+  }
+  return e instanceof Error ? e.message : '上传失败'
 }
 
 const loading = ref(false)
@@ -125,7 +146,6 @@ async function submitRelease(e: Event) {
     fd.append('file', f)
     fd.append('version', ver)
     fd.append('release_notes', log)
-    fd.append('is_active', 'false')
     await uploadFirmware(fd)
     releaseDlgRef.value?.close()
     versionInput.value = ''
@@ -136,10 +156,27 @@ async function submitRelease(e: Event) {
     )
     await loadList()
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : '上传失败'
+    err.value = formatUploadError(e)
     window.alert(err.value)
   } finally {
     loading.value = false
+  }
+}
+
+async function removeFirmware(row: FwRow) {
+  const n = row.device_count ?? 0
+  let msg = `确定删除固件版本 v${row.version}？将同时删除服务器上的文件包，不可恢复。`
+  if (n > 0) {
+    msg += `\n\n当前有 ${n} 台设备在库中登记为该版本（仅删除服务端记录与文件，设备本地固件版本不变）。`
+  }
+  if (!window.confirm(msg)) return
+  err.value = ''
+  try {
+    await deleteFirmware(row.id)
+    await loadList()
+  } catch (e: unknown) {
+    err.value = formatUploadError(e)
+    window.alert(err.value)
   }
 }
 
@@ -312,8 +349,8 @@ onUnmounted(() => {
     <h2 class="text-sm font-bold text-slate-800 mb-3">固件列表</h2>
     <p v-if="listLoading" class="text-sm text-slate-500 mb-2">加载中…</p>
     <div class="admin-table-wrap">
-      <table class="min-w-[720px] w-full text-left text-sm">
-        <caption class="sr-only">各固件版本、上传时间、是否对设备开放及当前在线设备数量</caption>
+      <table class="min-w-[820px] w-full text-left text-sm">
+        <caption class="sr-only">各固件版本、上传时间、是否启用、设备数量及删除操作</caption>
         <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
           <tr>
             <th class="px-4 py-3 font-semibold">版本</th>
@@ -323,6 +360,7 @@ onUnmounted(() => {
               <span class="block font-normal text-slate-400 text-[11px] mt-0.5">关闭时设备无法拉取该版本</span>
             </th>
             <th class="px-4 py-3 font-semibold text-right">设备数量</th>
+            <th class="px-4 py-3 font-semibold text-right w-24">操作</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
@@ -364,6 +402,15 @@ onUnmounted(() => {
               :class="(row.device_count ?? 0) > 0 ? 'text-slate-900' : 'text-slate-600'"
             >
               {{ row.device_count ?? 0 }}
+            </td>
+            <td class="px-4 py-3 text-right">
+              <button
+                type="button"
+                class="text-sm font-semibold text-red-600 hover:text-red-700 hover:underline"
+                @click="removeFirmware(row)"
+              >
+                删除
+              </button>
             </td>
           </tr>
         </tbody>

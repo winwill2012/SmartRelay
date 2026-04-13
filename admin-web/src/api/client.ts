@@ -154,14 +154,20 @@ export async function getAdminFirmwareList() {
   return unwrap(res)
 }
 
+/** 固件 multipart：禁止手写 Content-Type，须由浏览器/axios 自动带 boundary，否则上传会失败并报 Network Error */
 export async function uploadFirmware(form: FormData) {
   const res = await http.post<ApiEnvelope<unknown>>('/admin/firmware', form, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+    timeout: 300000
   })
   return unwrap(res)
 }
 
 export async function patchFirmware(id: string | number, body: Record<string, unknown>) {
   const res = await http.patch<ApiEnvelope<unknown>>(`/admin/firmware/${id}`, body)
+  return unwrap(res)
+}
+
+export async function deleteFirmware(id: string | number) {
+  const res = await http.delete<ApiEnvelope<unknown>>(`/admin/firmware/${id}`)
   return unwrap(res)
 }
