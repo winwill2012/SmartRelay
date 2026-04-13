@@ -1,12 +1,13 @@
 import hashlib
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
-from sqlalchemy import func, select, update
+from sqlalchemy import exists, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
 from app.db import get_session
@@ -19,6 +20,7 @@ from app.models import (
     FirmwareVersion,
     User,
     UserDevice,
+    UserDeviceRole,
 )
 from app.response import err, ok
 from app.schemas import AdminLoginBody, AdminPasswordBody, FirmwarePatchBody
@@ -65,29 +67,104 @@ async def admin_password(
     return ok({})
 
 
+def _dashboard_period_start(period: str, now: datetime) -> datetime:
+    d = now.date()
+    if period == "today":
+        return datetime.combine(d, time.min)
+    if period == "d7":
+        return now - timedelta(days=7)
+    if period == "d30":
+        return now - timedelta(days=30)
+    if period == "week":
+        monday = d - timedelta(days=d.weekday())
+        return datetime.combine(monday, time.min)
+    if period == "month":
+        return datetime.combine(d.replace(day=1), time.min)
+    if period == "year":
+        return datetime.combine(d.replace(month=1, day=1), time.min)
+    return datetime.combine(d, time.min)
+
+
 @router.get("/dashboard/metrics")
 async def dashboard_metrics(
+    period: str = Query(
+        "today",
+        description="统计周期：today|week|month|year|d7|d30",
+        pattern="^(today|week|month|year|d7|d30)$",
+    ),
     _admin_id: int = Depends(get_current_admin_id),
     session: AsyncSession = Depends(get_session),
 ):
     settings = get_settings()
+    now = datetime.now()
     uc = await session.execute(select(func.count()).select_from(User))
     user_count = int(uc.scalar_one() or 0)
     dc = await session.execute(select(func.count()).select_from(Device))
     device_count = int(dc.scalar_one() or 0)
 
-    thr = datetime.now() - timedelta(seconds=settings.device_offline_seconds)
+    thr = now - timedelta(seconds=settings.device_offline_seconds)
     oc = await session.execute(select(func.count()).select_from(Device).where(Device.last_seen_at >= thr))
     online_count = int(oc.scalar_one() or 0)
 
+    online_rate = round((100.0 * online_count / device_count), 1) if device_count else 0.0
+
+    active_since = now - timedelta(days=7)
+    ac = await session.execute(
+        select(func.count()).select_from(Device).where(Device.last_seen_at >= active_since)
+    )
+    active_device_7d = int(ac.scalar_one() or 0)
+
     today = date.today()
-    start = datetime.combine(today, datetime.min.time())
+    start_today = datetime.combine(today, time.min)
     cmd_c = await session.execute(
         select(func.count())
         .select_from(DeviceOperationLog)
-        .where(DeviceOperationLog.action == "command.sent", DeviceOperationLog.created_at >= start)
+        .where(DeviceOperationLog.action == "command.sent", DeviceOperationLog.created_at >= start_today)
     )
     cmd_today = int(cmd_c.scalar_one() or 0)
+
+    p_start = _dashboard_period_start(period, now)
+    cmd_p = await session.execute(
+        select(func.count())
+        .select_from(DeviceOperationLog)
+        .where(DeviceOperationLog.action == "command.sent", DeviceOperationLog.created_at >= p_start)
+    )
+    commands_in_period = int(cmd_p.scalar_one() or 0)
+
+    new_users_p = await session.execute(
+        select(func.count()).select_from(User).where(User.created_at >= p_start)
+    )
+    users_new_in_period = int(new_users_p.scalar_one() or 0)
+
+    sched_p = await session.execute(
+        select(func.count())
+        .select_from(DeviceOperationLog)
+        .where(DeviceOperationLog.action == "schedule.run", DeviceOperationLog.created_at >= p_start)
+    )
+    schedule_runs_in_period = int(sched_p.scalar_one() or 0)
+
+    share_p = await session.execute(
+        select(func.count())
+        .select_from(UserDevice)
+        .where(UserDevice.role == UserDeviceRole.shared, UserDevice.created_at >= p_start)
+    )
+    share_bindings_in_period = int(share_p.scalar_one() or 0)
+
+    lr = await session.execute(
+        select(FirmwareVersion.version)
+        .where(FirmwareVersion.is_active.is_(True))
+        .order_by(FirmwareVersion.id.desc())
+        .limit(1)
+    )
+    latest_ver = lr.scalar_one_or_none()
+    pending_fw = 0
+    if latest_ver:
+        pvc = await session.execute(
+            select(func.count())
+            .select_from(Device)
+            .where(or_(Device.fw_version.is_(None), Device.fw_version != latest_ver))
+        )
+        pending_fw = int(pvc.scalar_one() or 0)
 
     fv = await session.execute(select(Device.fw_version, func.count()).group_by(Device.fw_version))
     fw_distribution = sorted(
@@ -101,10 +178,18 @@ async def dashboard_metrics(
 
     return ok(
         {
+            "period": period,
             "user_count": user_count,
             "device_count": device_count,
             "online_count": online_count,
+            "online_rate_percent": online_rate,
+            "active_device_7d": active_device_7d,
             "commands_today": cmd_today,
+            "commands_in_period": commands_in_period,
+            "users_new_in_period": users_new_in_period,
+            "schedule_runs_in_period": schedule_runs_in_period,
+            "share_bindings_in_period": share_bindings_in_period,
+            "pending_fw_upgrade_count": pending_fw,
             "fw_distribution": fw_distribution,
         }
     )
@@ -116,12 +201,39 @@ async def admin_users(
     session: AsyncSession = Depends(get_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
+    q: Optional[str] = Query(None, description="昵称 / openid"),
+    reg_start: Optional[date] = Query(None),
+    reg_end: Optional[date] = Query(None),
+    login_start: Optional[date] = Query(None),
+    login_end: Optional[date] = Query(None),
 ):
-    off = (page - 1) * page_size
-    r = await session.execute(select(User).order_by(User.id.desc()).offset(off).limit(page_size))
-    rows = r.scalars().all()
-    tc = await session.execute(select(func.count()).select_from(User))
+    conds = []
+    if q and q.strip():
+        like = f"%{q.strip()}%"
+        conds.append(or_(User.nickname.like(like), User.openid.like(like)))
+    if reg_start is not None:
+        conds.append(User.created_at >= datetime.combine(reg_start, time.min))
+    if reg_end is not None:
+        conds.append(User.created_at <= datetime.combine(reg_end, time.max))
+    if login_start is not None:
+        conds.append(User.last_login_at.isnot(None))
+        conds.append(User.last_login_at >= datetime.combine(login_start, time.min))
+    if login_end is not None:
+        conds.append(User.last_login_at.isnot(None))
+        conds.append(User.last_login_at <= datetime.combine(login_end, time.max))
+
+    count_sel = select(func.count()).select_from(User)
+    if conds:
+        count_sel = count_sel.where(*conds)
+    tc = await session.execute(count_sel)
     total = int(tc.scalar_one() or 0)
+
+    list_sel = select(User)
+    if conds:
+        list_sel = list_sel.where(*conds)
+    off = (page - 1) * page_size
+    r = await session.execute(list_sel.order_by(User.id.desc()).offset(off).limit(page_size))
+    rows = r.scalars().all()
     items = []
     for u in rows:
         c = await session.execute(
@@ -133,6 +245,7 @@ async def admin_users(
                 "openid": u.openid,
                 "nickname": u.nickname,
                 "created_at": u.created_at.isoformat(),
+                "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
                 "device_bindings": int(c.scalar_one() or 0),
             }
         )
@@ -181,18 +294,55 @@ async def admin_devices(
     session: AsyncSession = Depends(get_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
+    q: Optional[str] = Query(None, description="设备编号 / MAC / 备注"),
+    last_seen_start: Optional[date] = Query(None),
+    last_seen_end: Optional[date] = Query(None),
 ):
-    off = (page - 1) * page_size
-    r = await session.execute(select(Device).order_by(Device.id.desc()).offset(off).limit(page_size))
-    rows = r.scalars().all()
-    tc = await session.execute(select(func.count()).select_from(Device))
+    conds = []
+    if q and q.strip():
+        like = f"%{q.strip()}%"
+        remark_exists = exists().where(
+            UserDevice.device_id == Device.id,
+            UserDevice.remark.like(like),
+        )
+        conds.append(or_(Device.device_id.like(like), Device.mac.like(like), remark_exists))
+    if last_seen_start is not None or last_seen_end is not None:
+        conds.append(Device.last_seen_at.isnot(None))
+    if last_seen_start is not None:
+        conds.append(Device.last_seen_at >= datetime.combine(last_seen_start, time.min))
+    if last_seen_end is not None:
+        conds.append(Device.last_seen_at <= datetime.combine(last_seen_end, time.max))
+
+    count_sel = select(func.count()).select_from(Device)
+    if conds:
+        count_sel = count_sel.where(*conds)
+    tc = await session.execute(count_sel)
     total = int(tc.scalar_one() or 0)
+
+    list_sel = select(Device)
+    if conds:
+        list_sel = list_sel.where(*conds)
+    off = (page - 1) * page_size
+    r = await session.execute(
+        list_sel.options(selectinload(Device.user_devices).selectinload(UserDevice.user))
+        .order_by(Device.id.desc())
+        .offset(off)
+        .limit(page_size)
+    )
+    rows = r.scalars().unique().all()
     items = []
     for d in rows:
+        ud_sorted = sorted(d.user_devices, key=lambda x: x.id)
+        first = ud_sorted[0] if ud_sorted else None
+        owner_nickname = None
+        if first and first.user:
+            owner_nickname = first.user.nickname
         items.append(
             {
                 "id": d.id,
                 "device_id": d.device_id,
+                "binding_remark": first.remark if first else "",
+                "owner_nickname": owner_nickname,
                 "online": device_is_online(d.last_seen_at),
                 "fw_version": d.fw_version,
                 "last_seen_at": d.last_seen_at.isoformat() if d.last_seen_at else None,
