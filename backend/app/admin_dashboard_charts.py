@@ -39,44 +39,40 @@ def resolve_dashboard_window(
     return datetime.combine(d, time.min), now
 
 
-def chart_bucket_specs(ps: datetime, pe: datetime) -> List[Tuple[datetime, datetime, str]]:
-    """返回 [bucket_start, bucket_end) 与轴标签，桶数上限约 12。"""
+def _intraday_buckets(ps: datetime, pe: datetime, pe_excl: datetime, day: date) -> List[Tuple[datetime, datetime, str]]:
+    """单日实时：按整点小时分段（00:00–01:00 …），最多 24 桶。"""
+    midnight = datetime.combine(day, time.min)
     out: List[Tuple[datetime, datetime, str]] = []
-    if pe <= ps:
-        pe = ps + timedelta(minutes=1)
+    for i in range(24):
+        bs = max(midnight + timedelta(hours=i), ps)
+        be_excl = min(midnight + timedelta(hours=i + 1), pe_excl)
+        if be_excl > bs:
+            out.append((bs, be_excl, f"{i:02d}:00"))
+    if not out:
+        out.append((ps, pe_excl, "时段"))
+    return out
 
-    pe_excl = pe + timedelta(seconds=1)
 
+def _daily_bucket_list(ps: datetime, pe: datetime, pe_excl: datetime) -> List[Tuple[datetime, datetime, str]]:
+    d0, d1 = ps.date(), pe.date()
+    out: List[Tuple[datetime, datetime, str]] = []
+    cur = d0
+    while cur <= d1:
+        bs = max(datetime.combine(cur, time.min), ps)
+        be_excl = min(datetime.combine(cur + timedelta(days=1), time.min), pe_excl)
+        if be_excl > bs:
+            wk = ("一", "二", "三", "四", "五", "六", "日")[cur.weekday()]
+            out.append((bs, be_excl, f"{cur.strftime('%m/%d')}({wk})"))
+        cur += timedelta(days=1)
+    return out
+
+
+def _wide_span_chunks(ps: datetime, pe: datetime, pe_excl: datetime) -> List[Tuple[datetime, datetime, str]]:
     d0, d1 = ps.date(), pe.date()
     num_days = (d1 - d0).days + 1
-
-    if num_days <= 1:
-        day = d0
-        midnight = datetime.combine(day, time.min)
-        for i in range(6):
-            bs = max(midnight + timedelta(hours=4 * i), ps)
-            be_excl = min(midnight + timedelta(hours=4 * (i + 1)), pe_excl)
-            if be_excl <= bs:
-                continue
-            label = f"{4 * i}-{4 * (i + 1)}h"
-            out.append((bs, be_excl, label))
-        if not out:
-            out.append((ps, pe_excl, "时段"))
-        return out[:12]
-
-    if num_days <= 14:
-        cur = d0
-        while cur <= d1:
-            bs = max(datetime.combine(cur, time.min), ps)
-            be_excl = min(datetime.combine(cur + timedelta(days=1), time.min), pe_excl)
-            if be_excl > bs:
-                wk = ("一", "二", "三", "四", "五", "六", "日")[cur.weekday()]
-                out.append((bs, be_excl, f"{cur.strftime('%m/%d')}({wk})"))
-            cur += timedelta(days=1)
-        return out[:24]
-
     nb = min(12, max(4, (num_days + 2) // 3))
     span = max(1, (num_days + nb - 1) // nb)
+    out: List[Tuple[datetime, datetime, str]] = []
     cur = d0
     while cur <= d1 and len(out) < 24:
         chunk_last = min(cur + timedelta(days=span - 1), d1)
@@ -87,6 +83,88 @@ def chart_bucket_specs(ps: datetime, pe: datetime) -> List[Tuple[datetime, datet
             out.append((bs, be_excl, label))
         cur = chunk_last + timedelta(days=1)
     return out[:12]
+
+
+def _year_month_buckets(ps: datetime, pe: datetime, pe_excl: datetime) -> List[Tuple[datetime, datetime, str]]:
+    out: List[Tuple[datetime, datetime, str]] = []
+    cur = date(ps.year, ps.month, 1)
+    end_d = pe.date()
+    while cur <= end_d and len(out) < 12:
+        bs = max(datetime.combine(cur, time.min), ps)
+        if cur.month == 12:
+            next_m = date(cur.year + 1, 1, 1)
+        else:
+            next_m = date(cur.year, cur.month + 1, 1)
+        be_excl = min(datetime.combine(next_m, time.min), pe_excl)
+        if be_excl > bs:
+            out.append((bs, be_excl, f"{cur.month}月"))
+        if cur.month == 12:
+            cur = date(cur.year + 1, 1, 1)
+        else:
+            cur = date(cur.year, cur.month + 1, 1)
+    return out
+
+
+def chart_bucket_specs(
+    ps: datetime,
+    pe: datetime,
+    period: str,
+    range_from: Optional[date],
+    range_to: Optional[date],
+) -> List[Tuple[datetime, datetime, str]]:
+    """按「统计周期」分桶，避免「本周」在周一仍走 0–4h 的误判。"""
+    if pe <= ps:
+        pe = ps + timedelta(minutes=1)
+    pe_excl = pe + timedelta(seconds=1)
+
+    if range_from is not None and range_to is not None:
+        if range_from == range_to:
+            return _intraday_buckets(ps, pe, pe_excl, range_from)[:24]
+        nd = (range_to - range_from).days + 1
+        if nd <= 14:
+            return _daily_bucket_list(ps, pe, pe_excl)[:24]
+        return _wide_span_chunks(ps, pe, pe_excl)
+
+    if period == "today":
+        return _intraday_buckets(ps, pe, pe_excl, ps.date())[:24]
+
+    if period in ("week", "d7"):
+        return _daily_bucket_list(ps, pe, pe_excl)[:14]
+
+    if period == "month":
+        nd = (pe.date() - ps.date()).days + 1
+        if nd <= 14:
+            return _daily_bucket_list(ps, pe, pe_excl)
+        return _wide_span_chunks(ps, pe, pe_excl)
+
+    if period == "d30":
+        return _wide_span_chunks(ps, pe, pe_excl)
+
+    if period == "year":
+        return _year_month_buckets(ps, pe, pe_excl)
+
+    return _daily_bucket_list(ps, pe, pe_excl)[:24]
+
+
+def caption_for_period(
+    period: str,
+    range_from: Optional[date],
+    range_to: Optional[date],
+) -> str:
+    if range_from is not None and range_to is not None:
+        if range_from == range_to:
+            return "当日按小时"
+        if (range_to - range_from).days + 1 <= 14:
+            return "自定义区间按日"
+        return "自定义区间分段"
+    return {
+        "today": "今日按小时",
+        "week": "本周按日",
+        "d7": "近 7 日按日",
+        "d30": "近 30 日分段",
+        "month": "本月分段",
+        "year": "本年按月",
+    }.get(period, "按日")
 
 
 async def online_count_at_instant(session: AsyncSession, instant: datetime, offline_sec: int) -> int:
@@ -130,8 +208,11 @@ async def build_chart_series(
     p_start: datetime,
     p_end: datetime,
     offline_sec: int,
+    period: str,
+    range_from: Optional[date],
+    range_to: Optional[date],
 ) -> dict:
-    specs = chart_bucket_specs(p_start, p_end)
+    specs = chart_bucket_specs(p_start, p_end, period, range_from, range_to)
     labels: List[str] = []
     online_count_vals: List[int] = []
     user_vals: List[int] = []
@@ -146,14 +227,7 @@ async def build_chart_series(
         user_vals.append(await count_users_between(session, bs, be_excl))
         cmd_vals.append(await count_commands_between(session, bs, be_excl))
 
-    if len(specs) <= 1:
-        cap_u = "按时段"
-    elif (p_end.date() - p_start.date()).days <= 0:
-        cap_u = "今日按 4 小时分段"
-    elif (p_end - p_start).days <= 14:
-        cap_u = "按日"
-    else:
-        cap_u = "按多日汇总"
+    cap_u = caption_for_period(period, range_from, range_to)
 
     return {
         "labels": labels,

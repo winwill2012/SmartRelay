@@ -850,6 +850,26 @@
   width: 100%;
 }
 
+/* 今日按小时等：桶数多（约 24）时压缩柱宽与字重，避免挤成一团 */
+.admin-chart-bars--dense {
+  gap: 0.15rem;
+  padding: 0 0.1rem;
+}
+
+.admin-chart-bars--dense .admin-chart-bars__col {
+  gap: 0.2rem;
+}
+
+.admin-chart-bars--dense .admin-chart-bars__bar {
+  max-width: 1.35rem;
+  border-radius: 0.125rem 0.125rem 0.0625rem 0.0625rem;
+}
+
+.admin-chart-bars--dense .admin-chart-bars__label {
+  font-size: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
 .admin-chart-line-grid {
   stroke: #e2e8f0;
   stroke-width: 0.5;
@@ -857,7 +877,8 @@
 
 .admin-chart-line-path {
   fill: none;
-  stroke: url(#adminLineGrad);
+  /* 实色描边：部分环境下 stroke:url(#id) 缩放后不绘制，导致「只有点没有线」 */
+  stroke: #2563eb;
   stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;

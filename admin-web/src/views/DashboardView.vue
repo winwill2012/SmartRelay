@@ -84,7 +84,14 @@ const cmdVals = computed(() => {
   return v?.length ? v : [0]
 })
 
-const lineChart = computed(() => buildLineChart(lineValues.value, chartLabels.value))
+/** 折线 Y 轴：0～ max(总设备数, 序列最大值)，避免「全是 2」时 min=max 画在底边、折线看起来像没画 */
+const lineChart = computed(() => {
+  const vals = lineValues.value
+  const dc = Number(metrics.value.device_count)
+  const mv = vals.length ? Math.max(...vals) : 0
+  const yMax = Math.max(Number.isFinite(dc) ? dc : 0, mv, 1)
+  return buildLineChart(vals, chartLabels.value, { yMin: 0, yMax })
+})
 
 const userBarH = computed(() => barHeights(userVals.value))
 const cmdBarH = computed(() => barHeights(cmdVals.value, Math.max(...cmdVals.value, 1)))
@@ -92,6 +99,9 @@ const cmdBarH = computed(() => barHeights(cmdVals.value, Math.max(...cmdVals.val
 const lineCaption = computed(() => charts.value?.captions?.line ?? '在线设备数量')
 const barCaption = computed(() => charts.value?.captions?.users ?? '新增用户')
 const hourCaption = computed(() => charts.value?.captions?.commands ?? '指令下发')
+
+/** 单日按小时时桶数多，柱状图用紧凑样式 */
+const chartsBarsDense = computed(() => (charts.value?.labels?.length ?? 0) > 14)
 
 /** 自定义即时提示（原生 title 有约 0.5～1s 延迟） */
 const tipShow = ref(false)
@@ -405,7 +415,10 @@ onMounted(() => {
         <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ barCaption }}</span>
       </div>
       <div class="admin-chart-area admin-chart-area--twin flex flex-col h-[260px]">
-        <div class="admin-chart-bars flex-1 min-h-0 h-full">
+        <div
+          class="admin-chart-bars flex-1 min-h-0 h-full"
+          :class="{ 'admin-chart-bars--dense': chartsBarsDense }"
+        >
           <div v-for="(h, i) in userBarH" :key="'u' + i" class="admin-chart-bars__col">
             <div
               class="admin-chart-bars__bar"
@@ -428,7 +441,7 @@ onMounted(() => {
         <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ hourCaption }}</span>
       </div>
       <div class="admin-chart-area min-h-[14rem]">
-        <div class="admin-chart-bars min-h-[11rem]">
+        <div class="admin-chart-bars min-h-[11rem]" :class="{ 'admin-chart-bars--dense': chartsBarsDense }">
           <div v-for="(h, i) in cmdBarH" :key="'c' + i" class="admin-chart-bars__col">
             <div
               class="admin-chart-bars__bar"

@@ -176,7 +176,9 @@ async def dashboard_metrics(
         reverse=True,
     )
 
-    charts = await build_chart_series(session, p_start, p_end, settings.device_offline_seconds)
+    charts = await build_chart_series(
+        session, p_start, p_end, settings.device_offline_seconds, period, rf, rt
+    )
 
     return ok(
         {

@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { setAdminToken } from '../api/client'
+
+const COLLAPSE_KEY = 'smartrelay-admin-sidebar-collapsed'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,12 +24,66 @@ const title = computed(() => {
   return m[String(route.name)] || 'SmartRelay'
 })
 
+const isDashboard = computed(() => route.name === 'dashboard')
+
+const mainClasses = computed(() =>
+  route.name === 'dashboard' ? 'admin-content' : 'admin-content admin-content--datagrid'
+)
+
+function mqDesktop() {
+  return typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+}
+
 function toggleDrawer() {
   sidebarOpen.value = !sidebarOpen.value
 }
 
+function persistCollapsed(c: boolean) {
+  if (!mqDesktop()) return
+  try {
+    localStorage.setItem(COLLAPSE_KEY, c ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
+}
+
 function toggleCollapse() {
+  if (!mqDesktop()) return
   collapsed.value = !collapsed.value
+  persistCollapsed(collapsed.value)
+}
+
+function onResize() {
+  if (!mqDesktop()) {
+    collapsed.value = false
+  }
+}
+
+function closeUserMenu() {
+  userMenu.value = false
+}
+
+function toggleUserMenu(e: MouseEvent) {
+  e.stopPropagation()
+  userMenu.value = !userMenu.value
+}
+
+function onDocClick() {
+  closeUserMenu()
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    if (sidebarOpen.value && !mqDesktop()) {
+      sidebarOpen.value = false
+      return
+    }
+    if (userMenu.value) {
+      closeUserMenu()
+      const el = document.getElementById('admin-user-trigger')
+      el?.focus()
+    }
+  }
 }
 
 function logout() {
@@ -35,8 +91,31 @@ function logout() {
   router.push('/login')
 }
 
+watch(sidebarOpen, (open) => {
+  if (typeof document === 'undefined') return
+  document.body.style.overflow = open && !mqDesktop() ? 'hidden' : ''
+})
+
 onMounted(() => {
   document.body.classList.add('admin-body')
+  try {
+    if (mqDesktop() && localStorage.getItem(COLLAPSE_KEY) === '1') {
+      collapsed.value = true
+    }
+  } catch {
+    /* ignore */
+  }
+  window.addEventListener('resize', onResize)
+  document.addEventListener('click', onDocClick)
+  document.addEventListener('keydown', onKeydown)
+})
+
+onUnmounted(() => {
+  document.body.classList.remove('admin-body')
+  document.body.style.overflow = ''
+  window.removeEventListener('resize', onResize)
+  document.removeEventListener('click', onDocClick)
+  document.removeEventListener('keydown', onKeydown)
 })
 </script>
 
@@ -56,7 +135,7 @@ onMounted(() => {
       aria-label="侧栏导航"
     >
       <div class="admin-sidebar__head">
-        <RouterLink to="/dashboard" class="admin-sidebar__brand" title="SmartRelay 控制台">
+        <RouterLink to="/dashboard" class="admin-sidebar__brand" title="SmartRelay 控制台" @click="sidebarOpen = false">
           <span class="admin-sidebar__logo">SR</span>
           <span class="admin-sidebar__brand-txt">
             <strong>SmartRelay</strong>
@@ -64,23 +143,15 @@ onMounted(() => {
           </span>
         </RouterLink>
         <button
+          id="admin-sidebar-toggle"
           type="button"
           class="admin-sidebar__pin"
-          aria-label="收起菜单"
+          :aria-label="collapsed ? '展开菜单' : '收起菜单'"
+          :aria-expanded="collapsed ? 'false' : 'true'"
           @click="toggleCollapse"
         >
-          <svg
-            class="admin-sidebar__pin-icon"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-            />
+          <svg class="admin-sidebar__pin-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
           </svg>
         </button>
       </div>
@@ -91,7 +162,7 @@ onMounted(() => {
           active-class="is-active"
           @click="sidebarOpen = false"
         >
-          <svg class="admin-sidebar__ico" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="admin-sidebar__ico" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -101,13 +172,8 @@ onMounted(() => {
           </svg>
           <span>数据大屏</span>
         </RouterLink>
-        <RouterLink
-          to="/users"
-          class="admin-sidebar__link"
-          active-class="is-active"
-          @click="sidebarOpen = false"
-        >
-          <svg class="admin-sidebar__ico" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <RouterLink to="/users" class="admin-sidebar__link" active-class="is-active" @click="sidebarOpen = false">
+          <svg class="admin-sidebar__ico" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -117,13 +183,8 @@ onMounted(() => {
           </svg>
           <span>用户管理</span>
         </RouterLink>
-        <RouterLink
-          to="/devices"
-          class="admin-sidebar__link"
-          active-class="is-active"
-          @click="sidebarOpen = false"
-        >
-          <svg class="admin-sidebar__ico" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <RouterLink to="/devices" class="admin-sidebar__link" active-class="is-active" @click="sidebarOpen = false">
+          <svg class="admin-sidebar__ico" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -133,13 +194,8 @@ onMounted(() => {
           </svg>
           <span>设备管理</span>
         </RouterLink>
-        <RouterLink
-          to="/firmware"
-          class="admin-sidebar__link"
-          active-class="is-active"
-          @click="sidebarOpen = false"
-        >
-          <svg class="admin-sidebar__ico" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <RouterLink to="/firmware" class="admin-sidebar__link" active-class="is-active" @click="sidebarOpen = false">
+          <svg class="admin-sidebar__ico" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -156,29 +212,49 @@ onMounted(() => {
       <header class="admin-topbar">
         <div class="admin-topbar__left">
           <button type="button" class="admin-drawer-toggle lg:hidden" aria-label="打开菜单" @click="toggleDrawer">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
           <h1 class="admin-topbar__title">{{ title }}</h1>
         </div>
         <div class="flex items-center gap-3">
-          <div class="admin-user-menu" :class="{ 'is-open': userMenu }">
+          <span v-if="isDashboard" class="hidden sm:inline text-xs font-medium text-slate-500">数据每分钟更新</span>
+          <div class="admin-user-menu" :class="{ 'is-open': userMenu }" @click.stop>
             <button
+              id="admin-user-trigger"
               type="button"
               class="admin-user-trigger"
-              aria-expanded="false"
-              @click="userMenu = !userMenu"
+              aria-haspopup="true"
+              aria-controls="admin-user-dropdown"
+              :aria-expanded="userMenu ? 'true' : 'false'"
+              @click="toggleUserMenu"
             >
-              <span class="admin-user-trigger__dot" />
+              <span class="admin-user-trigger__dot" aria-hidden="true" />
               <span class="admin-user-trigger__name">admin</span>
-              <svg class="admin-user-trigger__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg
+                class="admin-user-trigger__chevron"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            <div v-show="userMenu" class="admin-user-panel" role="menu">
-              <RouterLink to="/account/password" class="admin-user-panel__item" role="menuitem" @click="userMenu = false">修改密码</RouterLink>
-              <button type="button" class="admin-user-panel__item admin-user-panel__item--danger" role="menuitem" @click="logout">
+            <div id="admin-user-dropdown" class="admin-user-panel" role="menu">
+              <RouterLink to="/account/password" class="admin-user-panel__item" role="menuitem" @click="closeUserMenu">
+                修改密码
+              </RouterLink>
+              <button
+                type="button"
+                class="admin-user-panel__item admin-user-panel__item--danger"
+                role="menuitem"
+                @click="logout"
+              >
                 退出登录
               </button>
             </div>
@@ -186,7 +262,7 @@ onMounted(() => {
         </div>
       </header>
 
-      <main class="admin-content admin-content--datagrid">
+      <main :class="mainClasses">
         <RouterView />
       </main>
     </div>
@@ -208,6 +284,14 @@ onMounted(() => {
 @media (min-width: 1024px) {
   .lg\:hidden {
     display: none !important;
+  }
+}
+.hidden {
+  display: none;
+}
+@media (min-width: 640px) {
+  .sm\:inline {
+    display: inline;
   }
 }
 .w-6 {
