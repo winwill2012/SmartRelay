@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { getDashboardMetrics } from '../api/client'
-import { buildLineChart, barHeights } from '../lib/dashboardCharts'
+import AdminDateTimeRangePicker from '../components/AdminDateTimeRangePicker.vue'
+import { buildLineChart, barHeights, buildAxisDisplayLabels } from '../lib/dashboardCharts'
 
 type PeriodId = 'today' | 'week' | 'month' | 'year' | 'd7' | 'd30'
 
@@ -55,8 +56,8 @@ function initDateInputs() {
   const end = new Date()
   const start = new Date()
   start.setDate(start.getDate() - 6)
-  rangeStart.value = fmtDashDate(start)
-  rangeEnd.value = fmtDashDate(end)
+  rangeStart.value = `${fmtDashDate(start)}T00:00:00`
+  rangeEnd.value = `${fmtDashDate(end)}T23:59:59`
 }
 
 const charts = computed(() => (metrics.value.charts as ChartsPayload | undefined) ?? null)
@@ -65,6 +66,11 @@ const chartLabels = computed(() => {
   const c = charts.value
   return c?.labels?.length ? c.labels : ['—']
 })
+
+/** 柱图横轴：稀疏 + 缩写，避免「本月」多日重叠 */
+const chartLabelsDisplay = computed(() =>
+  buildAxisDisplayLabels(charts.value?.labels, chartLabels.value.length, 11)
+)
 
 const lineValues = computed(() => {
   const c = charts.value
@@ -90,7 +96,7 @@ const lineChart = computed(() => {
   const dc = Number(metrics.value.device_count)
   const mv = vals.length ? Math.max(...vals) : 0
   const yMax = Math.max(Number.isFinite(dc) ? dc : 0, mv, 1)
-  return buildLineChart(vals, chartLabels.value, { yMin: 0, yMax })
+   return buildLineChart(vals, chartLabels.value, { yMin: 0, yMax, maxAxisLabels: 11 })
 })
 
 const userBarH = computed(() => barHeights(userVals.value))
@@ -100,8 +106,8 @@ const lineCaption = computed(() => charts.value?.captions?.line ?? '在线设备
 const barCaption = computed(() => charts.value?.captions?.users ?? '新增用户')
 const hourCaption = computed(() => charts.value?.captions?.commands ?? '指令下发')
 
-/** 单日按小时时桶数多，柱状图用紧凑样式 */
-const chartsBarsDense = computed(() => (charts.value?.labels?.length ?? 0) > 14)
+/** 桶数多时柱宽与字号收紧（含本月按日十余点） */
+const chartsBarsDense = computed(() => (charts.value?.labels?.length ?? 0) > 10)
 
 /** 自定义即时提示（原生 title 有约 0.5～1s 延迟） */
 const tipShow = ref(false)
@@ -169,7 +175,7 @@ function applyCustomRange() {
     rangeEnd.value = e
   }
   if (!s || !e) {
-    err.value = '请选择开始与结束日期。'
+    err.value = '请选择开始与结束时间。'
     return
   }
   err.value = ''
@@ -256,12 +262,6 @@ onMounted(() => {
   <!-- 与原型一致：左侧标题区贴主内容左缘，右侧时间 pill 贴右，同一行垂直对齐（≥1024px） -->
   <div class="mb-6 space-y-4">
     <div class="dash-overview-toolbar">
-      <div class="dash-overview-copy">
-        <p class="text-sm font-semibold text-slate-800">多维度运营概览</p>
-        <p class="text-xs text-slate-500 mt-0.5">
-          图表数据来自数据库聚合；切换时间范围查看不同维度，悬停图表可查看数值
-        </p>
-      </div>
       <div class="admin-time-pills dash-overview-pills" role="group" aria-label="统计时间范围">
         <button
           v-for="p in pills"
@@ -290,12 +290,13 @@ onMounted(() => {
       class="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 rounded-xl border border-slate-200/90 bg-slate-50/80 px-4 py-3"
     >
       <div class="min-w-0 flex-1">
-        <p class="text-xs font-bold text-slate-600 mb-2">自定义起止日期</p>
-        <div class="admin-date-range max-w-xl" role="group" aria-label="自定义统计起止日期">
-          <input v-model="rangeStart" type="date" aria-label="开始日期" />
-          <span class="admin-date-range__sep">至</span>
-          <input v-model="rangeEnd" type="date" aria-label="结束日期" />
-        </div>
+        <p class="text-xs font-bold text-slate-600 mb-2">自定义时间范围</p>
+        <AdminDateTimeRangePicker
+          v-model:start="rangeStart"
+          v-model:end="rangeEnd"
+          start-placeholder="开始日期时间"
+          end-placeholder="结束日期时间"
+        />
       </div>
       <button
         type="button"
@@ -347,14 +348,14 @@ onMounted(() => {
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6 lg:items-stretch">
     <section class="admin-card p-5 flex flex-col min-h-0">
-      <div class="flex justify-between items-start gap-2 mb-3 shrink-0">
+      <div class="flex justify-between items-center gap-2 mb-3 shrink-0 min-h-[2.75rem]">
         <h2 class="text-sm font-bold text-slate-800">在线设备数量趋势</h2>
         <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ lineCaption }}</span>
       </div>
       <div class="admin-chart-area admin-chart-area--twin flex flex-col h-[260px]">
         <svg
           class="admin-chart-svg w-full h-full block"
-          viewBox="0 0 400 140"
+          viewBox="0 0 400 152"
           preserveAspectRatio="xMidYMid meet"
           role="img"
           aria-label="在线设备数量折线图"
@@ -406,11 +407,29 @@ onMounted(() => {
               @mouseleave="hideTip"
             />
           </g>
+          <g class="admin-chart-line-xaxis" aria-hidden="true">
+            <text
+              v-for="(lb, i) in lineChart.xLabels"
+              v-show="lb.text"
+              :key="'xl' + i"
+              :x="lb.x"
+              :y="lb.y"
+              text-anchor="middle"
+              class="admin-chart-line-xlabel"
+              :class="{
+                'admin-chart-line-xlabel--dense': chartsBarsDense,
+                'admin-chart-line-xlabel--tilt': lineChart.xLabelTilt
+              }"
+              :transform="lineChart.xLabelTilt ? `rotate(-34 ${lb.x} ${lb.y})` : ''"
+            >
+              {{ lb.text }}
+            </text>
+          </g>
         </svg>
       </div>
     </section>
     <section class="admin-card p-5 flex flex-col min-h-0">
-      <div class="flex justify-between items-start gap-2 mb-3 shrink-0">
+      <div class="flex justify-between items-center gap-2 mb-3 shrink-0 min-h-[2.75rem]">
         <h2 class="text-sm font-bold text-slate-800">新增用户</h2>
         <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ barCaption }}</span>
       </div>
@@ -420,44 +439,53 @@ onMounted(() => {
           :class="{ 'admin-chart-bars--dense': chartsBarsDense }"
         >
           <div v-for="(h, i) in userBarH" :key="'u' + i" class="admin-chart-bars__col">
-            <div
-              class="admin-chart-bars__bar"
-              :style="{ height: h + 'px' }"
-              @mouseenter="showTip($event, `${chartLabels[i] ?? ''}：${userVals[i] ?? 0} 人`)"
-              @mousemove="moveTip"
-              @mouseleave="hideTip"
-            />
-            <span class="admin-chart-bars__label">{{ chartLabels[i] ?? '' }}</span>
+            <div class="admin-chart-bars__plot">
+              <div
+                class="admin-chart-bars__bar"
+                :style="{ height: h + 'px' }"
+                @mouseenter="showTip($event, `${chartLabels[i] ?? ''}：${userVals[i] ?? 0} 人`)"
+                @mousemove="moveTip"
+                @mouseleave="hideTip"
+              />
+            </div>
+            <span class="admin-chart-bars__label">{{ chartLabelsDisplay[i] ?? '' }}</span>
           </div>
         </div>
       </div>
     </section>
   </div>
 
-  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-    <section class="admin-card p-5 xl:col-span-2">
-      <div class="flex justify-between items-start gap-2 mb-3">
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 xl:items-stretch">
+    <section class="admin-card p-5 xl:col-span-2 flex flex-col min-h-0 h-full">
+      <div class="flex justify-between items-center gap-2 mb-3 shrink-0 min-h-[2.75rem]">
         <h2 class="text-sm font-bold text-slate-800">指令下发量</h2>
         <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ hourCaption }}</span>
       </div>
-      <div class="admin-chart-area min-h-[14rem]">
-        <div class="admin-chart-bars min-h-[11rem]" :class="{ 'admin-chart-bars--dense': chartsBarsDense }">
+      <div class="admin-chart-area admin-chart-area--twin flex flex-col flex-1 min-h-0 h-[260px]">
+        <div
+          class="admin-chart-bars flex-1 min-h-0 h-full"
+          :class="{ 'admin-chart-bars--dense': chartsBarsDense }"
+        >
           <div v-for="(h, i) in cmdBarH" :key="'c' + i" class="admin-chart-bars__col">
-            <div
-              class="admin-chart-bars__bar"
-              :style="{ height: h + 'px' }"
-              @mouseenter="showTip($event, `${chartLabels[i] ?? ''}：${cmdVals[i] ?? 0} 次`)"
-              @mousemove="moveTip"
-              @mouseleave="hideTip"
-            />
-            <span class="admin-chart-bars__label">{{ chartLabels[i] ?? '' }}</span>
+            <div class="admin-chart-bars__plot">
+              <div
+                class="admin-chart-bars__bar"
+                :style="{ height: h + 'px' }"
+                @mouseenter="showTip($event, `${chartLabels[i] ?? ''}：${cmdVals[i] ?? 0} 次`)"
+                @mousemove="moveTip"
+                @mouseleave="hideTip"
+              />
+            </div>
+            <span class="admin-chart-bars__label">{{ chartLabelsDisplay[i] ?? '' }}</span>
           </div>
         </div>
       </div>
     </section>
-    <section class="admin-card p-5">
-      <h2 class="text-sm font-bold text-slate-800 mb-4">维度摘要</h2>
-      <ul class="text-sm text-slate-600 space-y-3">
+    <section class="admin-card p-5 flex flex-col min-h-0 h-full">
+      <div class="mb-3 shrink-0 min-h-[2.75rem] flex items-center">
+        <h2 class="text-sm font-bold text-slate-800">维度摘要</h2>
+      </div>
+      <ul class="text-sm text-slate-600 flex-1 flex flex-col justify-between gap-3 min-h-0 py-1">
         <li
           v-for="(row, idx) in summaryRows"
           :key="idx"
@@ -473,33 +501,20 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 大屏概览行：左文案 + 右时间选择，与主区内边距左缘对齐 */
+/* 大屏：仅时间范围 pill，靠右对齐 */
 .dash-overview-toolbar {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
   gap: 1rem;
   width: 100%;
-}
-.dash-overview-copy {
-  text-align: left;
-  min-width: 0;
 }
 .dash-overview-pills {
   width: 100%;
   justify-content: flex-end;
 }
 @media (min-width: 1024px) {
-  .dash-overview-toolbar {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-  .dash-overview-copy {
-    flex: 1 1 auto;
-    min-width: 0;
-    padding-right: 1rem;
-  }
   .dash-overview-pills {
     width: auto;
     flex: 0 0 auto;
@@ -549,6 +564,9 @@ onMounted(() => {
   }
   .xl\:col-span-2 {
     grid-column: span 2 / span 2;
+  }
+  .xl\:items-stretch {
+    align-items: stretch;
   }
 }
 .flex {

@@ -14,14 +14,14 @@ from app.models import Device, DeviceOperationLog, User
 def resolve_dashboard_window(
     period: str,
     now: datetime,
-    range_from: Optional[date],
-    range_to: Optional[date],
+    range_from: Optional[datetime],
+    range_to: Optional[datetime],
 ) -> Tuple[datetime, datetime]:
     if range_from is not None and range_to is not None:
         a, b = range_from, range_to
         if a > b:
             a, b = b, a
-        return datetime.combine(a, time.min), datetime.combine(b, time.max)
+        return a, b
     d = now.date()
     if period == "today":
         return datetime.combine(d, time.min), now
@@ -109,8 +109,8 @@ def chart_bucket_specs(
     ps: datetime,
     pe: datetime,
     period: str,
-    range_from: Optional[date],
-    range_to: Optional[date],
+    range_from: Optional[datetime],
+    range_to: Optional[datetime],
 ) -> List[Tuple[datetime, datetime, str]]:
     """按「统计周期」分桶，避免「本周」在周一仍走 0–4h 的误判。"""
     if pe <= ps:
@@ -118,9 +118,9 @@ def chart_bucket_specs(
     pe_excl = pe + timedelta(seconds=1)
 
     if range_from is not None and range_to is not None:
-        if range_from == range_to:
-            return _intraday_buckets(ps, pe, pe_excl, range_from)[:24]
-        nd = (range_to - range_from).days + 1
+        if range_from.date() == range_to.date():
+            return _intraday_buckets(ps, pe, pe_excl, range_from.date())[:24]
+        nd = (range_to.date() - range_from.date()).days + 1
         if nd <= 14:
             return _daily_bucket_list(ps, pe, pe_excl)[:24]
         return _wide_span_chunks(ps, pe, pe_excl)
@@ -148,13 +148,13 @@ def chart_bucket_specs(
 
 def caption_for_period(
     period: str,
-    range_from: Optional[date],
-    range_to: Optional[date],
+    range_from: Optional[datetime],
+    range_to: Optional[datetime],
 ) -> str:
     if range_from is not None and range_to is not None:
-        if range_from == range_to:
+        if range_from.date() == range_to.date():
             return "当日按小时"
-        if (range_to - range_from).days + 1 <= 14:
+        if (range_to.date() - range_from.date()).days + 1 <= 14:
             return "自定义区间按日"
         return "自定义区间分段"
     return {
@@ -209,8 +209,8 @@ async def build_chart_series(
     p_end: datetime,
     offline_sec: int,
     period: str,
-    range_from: Optional[date],
-    range_to: Optional[date],
+    range_from: Optional[datetime],
+    range_to: Optional[datetime],
 ) -> dict:
     specs = chart_bucket_specs(p_start, p_end, period, range_from, range_to)
     labels: List[str] = []

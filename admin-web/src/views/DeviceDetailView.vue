@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAdminDevice } from '../api/client'
+import { formatAdminDateTime } from '../lib/formatDisplay'
 
 const route = useRoute()
 const router = useRouter()
@@ -56,7 +57,7 @@ function goLogs() {
         </div>
         <div class="flex justify-between gap-4 border-b border-slate-100 pb-2">
           <dt class="text-slate-500">最后上报</dt>
-          <dd class="text-slate-600">{{ device.last_seen_at || '—' }}</dd>
+          <dd class="text-slate-600">{{ formatAdminDateTime(device.last_seen_at as string) }}</dd>
         </div>
       </dl>
       <button type="button" class="mt-6 rounded-lg bg-[#2563eb] text-white px-5 py-2.5 text-sm font-semibold" @click="goLogs">

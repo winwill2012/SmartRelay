@@ -2,9 +2,47 @@
 #include "sr_nvs.h"
 #include "sr_relay.h"
 #include "cJSON.h"
+#include "esp_log.h"
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+
+static const char *TAG = "sr_schedule";
+
+/** 本地日历分钟的稳定桶，用于同一条定时在同分钟内只执行一次（主循环约每 10s 会检查一次） */
+static int64_t local_minute_bucket(struct tm *ti) {
+  struct tm t = *ti;
+  time_t tt = mktime(&t);
+  if (tt == (time_t)-1) return 0;
+  return (int64_t)(tt / 60);
+}
+
+#define SR_SCHED_FIRED_MAX 12
+static int64_t s_fired_min_bucket = -1;
+static int s_fired_count = 0;
+static int64_t s_fired_sids[SR_SCHED_FIRED_MAX];
+
+static bool already_fired_this_minute(int64_t minb, int64_t sid) {
+  if (minb != s_fired_min_bucket) {
+    s_fired_min_bucket = minb;
+    s_fired_count = 0;
+    return false;
+  }
+  for (int i = 0; i < s_fired_count; i++) {
+    if (s_fired_sids[i] == sid) return true;
+  }
+  return false;
+}
+
+static void record_fired_this_minute(int64_t minb, int64_t sid) {
+  if (minb != s_fired_min_bucket) {
+    s_fired_min_bucket = minb;
+    s_fired_count = 0;
+  }
+  if (s_fired_count >= SR_SCHED_FIRED_MAX) return;
+  s_fired_sids[s_fired_count++] = sid;
+}
+
 static char s_json[8192] = "[]";
 static int64_t s_rev;
 
@@ -100,14 +138,21 @@ bool sr_schedule_tick(bool *out_from_sched, int64_t *out_sched_id, char *action_
     } else
       continue;
 
+    int64_t sid = 0;
+    cJSON *jid = cJSON_GetObjectItem(item, "id");
+    if (cJSON_IsNumber(jid)) sid = (int64_t)jid->valuedouble;
+
+    int64_t minb = local_minute_bucket(&ti);
+    if (already_fired_this_minute(minb, sid)) continue;
+
     const char *act = "off";
     cJSON *ja = cJSON_GetObjectItem(item, "action");
     if (cJSON_IsString(ja) && ja->valuestring) act = ja->valuestring;
     sr_relay_set(!strcmp(act, "on"));
 
-    int64_t sid = 0;
-    cJSON *jid = cJSON_GetObjectItem(item, "id");
-    if (cJSON_IsNumber(jid)) sid = (int64_t)jid->valuedouble;
+    record_fired_this_minute(minb, sid);
+
+    ESP_LOGI(TAG, "fired id=%lld time=%s action=%s", (long long)sid, curTime, act);
 
     if (out_from_sched) *out_from_sched = true;
     if (out_sched_id) *out_sched_id = sid;

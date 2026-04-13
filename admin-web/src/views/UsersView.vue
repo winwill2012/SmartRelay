@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import { getAdminUsers, getAdminUser } from '../api/client'
+import AdminDateTimeRangePicker from '../components/AdminDateTimeRangePicker.vue'
+import { formatAdminDateTime } from '../lib/formatDisplay'
 
 const loading = ref(true)
 const err = ref('')
@@ -18,7 +20,54 @@ const dlgOpen = ref(false)
 const dlgLoading = ref(false)
 const dlgErr = ref('')
 const dlgUserLabel = ref('')
-const dlgDevices = ref<{ device_id: string; remark?: string; online?: boolean }[]>([])
+const dlgDevices = ref<
+  { device_id: string; remark?: string; online?: boolean; bound_at?: string | null }[]
+>([])
+const dlgRef = ref<HTMLDialogElement | null>(null)
+const copiedDeviceId = ref<string | null>(null)
+let copyDeviceIdTimer: ReturnType<typeof setTimeout> | null = null
+
+async function copyDeviceId(deviceId: string) {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(deviceId)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = deviceId
+      ta.setAttribute('readonly', '')
+      ta.style.position = 'fixed'
+      ta.style.left = '-9999px'
+      document.body.appendChild(ta)
+      ta.select()
+      const ok = document.execCommand('copy')
+      document.body.removeChild(ta)
+      if (!ok) throw new Error('copy failed')
+    }
+    copiedDeviceId.value = deviceId
+    if (copyDeviceIdTimer) clearTimeout(copyDeviceIdTimer)
+    copyDeviceIdTimer = setTimeout(() => {
+      copiedDeviceId.value = null
+    }, 2000)
+  } catch {
+    window.alert('复制失败，请手动选择设备 ID 或检查浏览器权限')
+  }
+}
+
+function onDlgClose() {
+  dlgOpen.value = false
+  copiedDeviceId.value = null
+}
+
+watch(dlgOpen, async (v) => {
+  await nextTick()
+  const el = dlgRef.value
+  if (!el) return
+  if (v) {
+    if (!el.open) el.showModal()
+  } else if (el.open) {
+    el.close()
+  }
+})
 
 async function load() {
   loading.value = true
@@ -100,7 +149,12 @@ async function openDevices(row: Record<string, unknown>) {
   dlgDevices.value = []
   try {
     const detail = (await getAdminUser(uid as string | number)) as {
-      devices?: { device_id: string; remark?: string; online?: boolean }[]
+      devices?: {
+        device_id: string
+        remark?: string
+        online?: boolean
+        bound_at?: string | null
+      }[]
     }
     dlgDevices.value = detail.devices || []
   } catch (e: unknown) {
@@ -111,11 +165,11 @@ async function openDevices(row: Record<string, unknown>) {
 }
 
 function closeDlg() {
-  dlgOpen.value = false
+  dlgRef.value?.close()
 }
 
-function rowDate(s: string) {
-  return s.slice(0, 10)
+function onDlgBackdrop(e: MouseEvent) {
+  if (e.target === e.currentTarget) dlgRef.value?.close()
 }
 
 onMounted(() => {
@@ -124,56 +178,49 @@ onMounted(() => {
 </script>
 
 <template>
-  <form class="admin-card admin-filter-panel" action="javascript:void(0)" novalidate @submit="applyFilters">
-    <div class="admin-filter-panel__body">
-      <div class="admin-filter-panel__row admin-filter-panel__row--split">
-        <div class="min-w-0">
-          <label for="user-search" class="block text-xs font-bold text-slate-600 mb-1.5">昵称</label>
-          <input
-            id="user-search"
-            v-model="q"
-            type="search"
-            class="admin-input-search max-w-xl"
-            placeholder="搜索用户昵称…"
-            autocomplete="off"
-            enterkeyhint="search"
-            @keyup.enter="applyFilters"
+  <form
+    class="admin-card admin-filter-panel admin-filter-panel--toolbar"
+    action="javascript:void(0)"
+    novalidate
+    @submit="applyFilters"
+  >
+    <div class="admin-filter-toolbar">
+      <div class="admin-filter-toolbar__search">
+        <label for="user-search">昵称</label>
+        <input
+          id="user-search"
+          v-model="q"
+          type="search"
+          class="admin-input-search"
+          placeholder="搜索用户昵称…"
+          autocomplete="off"
+          enterkeyhint="search"
+          @keyup.enter="applyFilters"
+        />
+      </div>
+      <div class="admin-filter-toolbar__ranges">
+        <div class="admin-filter-inline-range">
+          <span class="admin-filter-inline-range__label">注册时间</span>
+          <AdminDateTimeRangePicker
+            v-model:start="regStart"
+            v-model:end="regEnd"
+            start-placeholder="注册开始"
+            end-placeholder="注册结束"
           />
         </div>
-        <div class="admin-filter-actions">
-          <button
-            type="submit"
-            class="admin-btn-primary rounded-lg bg-primary text-white px-5 py-2.5 text-sm font-semibold shadow-md shadow-blue-500/20 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            应用筛选
-          </button>
-          <button
-            type="button"
-            class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200"
-            @click="resetFilters"
-          >
-            清空条件
-          </button>
+        <div class="admin-filter-inline-range">
+          <span class="admin-filter-inline-range__label">最后登录</span>
+          <AdminDateTimeRangePicker
+            v-model:start="loginStart"
+            v-model:end="loginEnd"
+            start-placeholder="登录开始"
+            end-placeholder="登录结束"
+          />
         </div>
       </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <fieldset class="admin-filter-fieldset">
-          <legend>注册时间</legend>
-          <div class="admin-date-range" role="group" aria-label="注册时间范围">
-            <input v-model="regStart" type="date" aria-label="注册开始日期" />
-            <span class="admin-date-range__sep">至</span>
-            <input v-model="regEnd" type="date" aria-label="注册结束日期" />
-          </div>
-        </fieldset>
-        <fieldset class="admin-filter-fieldset">
-          <legend>最后登录</legend>
-          <div class="admin-date-range" role="group" aria-label="最后登录时间范围">
-            <input v-model="loginStart" type="date" aria-label="登录开始日期" />
-            <span class="admin-date-range__sep">至</span>
-            <input v-model="loginEnd" type="date" aria-label="登录结束日期" />
-          </div>
-        </fieldset>
+      <div class="admin-filter-toolbar__actions">
+        <button type="submit" class="admin-btn-toolbar admin-btn-toolbar--primary">查询</button>
+        <button type="button" class="admin-btn-toolbar admin-btn-toolbar--ghost" @click="resetFilters">重置</button>
       </div>
     </div>
   </form>
@@ -198,8 +245,8 @@ onMounted(() => {
           <td class="px-4 py-3">
             <span class="font-medium text-slate-900">{{ row.nickname || '—' }}</span>
           </td>
-          <td class="px-4 py-3 text-slate-700 tabular-nums">{{ row.created_at || '—' }}</td>
-          <td class="px-4 py-3 text-slate-700 tabular-nums">{{ row.last_login_at || '—' }}</td>
+          <td class="px-4 py-3 text-slate-700 tabular-nums">{{ formatAdminDateTime(row.created_at as string) }}</td>
+          <td class="px-4 py-3 text-slate-700 tabular-nums">{{ formatAdminDateTime(row.last_login_at as string) }}</td>
           <td class="px-4 py-3">
             <span :class="devBadgeClass(Number(row.device_bindings) || 0)">
               {{ Number(row.device_bindings) || 0 }} 台
@@ -250,8 +297,8 @@ onMounted(() => {
         <div>
           <p class="font-semibold text-slate-900">{{ row.nickname || '—' }}</p>
           <p class="text-xs text-slate-500 mt-1">
-            注册 {{ row.created_at ? rowDate(String(row.created_at)) : '—' }} · 最后登录
-            {{ row.last_login_at ? rowDate(String(row.last_login_at)) : '—' }}
+            注册 {{ formatAdminDateTime(row.created_at as string) }} · 最后登录
+            {{ formatAdminDateTime(row.last_login_at as string) }}
           </p>
         </div>
         <span class="shrink-0 text-sm font-semibold text-primary">{{ Number(row.device_bindings) || 0 }} 台</span>
@@ -281,11 +328,13 @@ onMounted(() => {
     </div>
   </div>
 
-  <dialog
-    class="admin-dialog rounded-xl border border-slate-200 p-0 shadow-xl max-w-md w-[calc(100%-2rem)]"
-    :open="dlgOpen"
-    @click="(e) => (e.target as HTMLDialogElement) === e.currentTarget && closeDlg()"
-  >
+  <Teleport to="body">
+    <dialog
+      ref="dlgRef"
+      class="admin-dialog admin-dialog--sm border border-slate-200"
+      @close="onDlgClose"
+      @click="onDlgBackdrop"
+    >
     <div class="border-b border-slate-200 px-4 py-3 flex justify-between items-center bg-slate-50">
       <h2 class="text-sm font-semibold text-slate-900">名下设备 · {{ dlgUserLabel }}</h2>
       <button type="button" class="text-slate-500 hover:text-slate-800 p-1 rounded" aria-label="关闭" @click="closeDlg">
@@ -300,32 +349,52 @@ onMounted(() => {
       <ul v-else class="space-y-2">
         <li
           v-for="(d, i) in dlgDevices"
-          :key="i"
-          class="flex justify-between gap-2 border border-slate-100 rounded-lg px-3 py-2"
+          :key="d.device_id + '-' + i"
+          class="flex justify-between gap-3 border border-slate-100 rounded-lg px-3 py-2.5"
         >
-          <span>{{ d.remark || d.device_id }}</span>
-          <span :class="d.online ? 'text-xs text-emerald-600' : 'text-xs text-slate-500'">
+          <div class="min-w-0 space-y-1">
+            <p class="font-medium text-slate-900 truncate">{{ d.remark || '—' }}</p>
+            <p class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-slate-500 tabular-nums">
+              <span class="text-slate-400 shrink-0">设备 ID</span>
+              <span class="min-w-0 break-all font-mono text-slate-700">{{ d.device_id }}</span>
+              <button
+                type="button"
+                class="user-dev-copy-id inline-flex shrink-0 items-center justify-center rounded border border-slate-200 bg-white p-0.5 text-slate-500 hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                title="复制设备 ID"
+                aria-label="复制设备 ID"
+                @click="copyDeviceId(d.device_id)"
+              >
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+              </button>
+              <span v-if="copiedDeviceId === d.device_id" class="text-[10px] font-medium text-emerald-600">已复制</span>
+            </p>
+            <p class="text-xs text-slate-500 tabular-nums">
+              <span class="text-slate-400">绑定时间</span>
+              {{ formatAdminDateTime(d.bound_at) }}
+            </p>
+          </div>
+          <span
+            class="shrink-0 self-start text-xs font-medium"
+            :class="d.online ? 'text-emerald-600' : 'text-slate-500'"
+          >
             {{ d.online ? '在线' : '离线' }}
           </span>
         </li>
         <li v-if="!dlgDevices.length" class="text-slate-500">暂无绑定设备</li>
       </ul>
     </div>
-  </dialog>
+    </dialog>
+  </Teleport>
 </template>
 
 <style scoped>
-.grid {
-  display: grid;
-}
-@media (min-width: 1024px) {
-  .lg\:grid-cols-2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-.gap-4 {
-  gap: 1rem;
-}
 .flex {
   display: flex;
 }
@@ -347,20 +416,17 @@ onMounted(() => {
 .mb-2 {
   margin-bottom: 0.5rem;
 }
-.mb-1\.5 {
-  margin-bottom: 0.375rem;
-}
 .space-y-3 > * + * {
   margin-top: 0.75rem;
 }
 .space-y-2 > * + * {
   margin-top: 0.5rem;
 }
+.space-y-1 > * + * {
+  margin-top: 0.25rem;
+}
 .min-w-0 {
   min-width: 0;
-}
-.max-w-xl {
-  max-width: 36rem;
 }
 .shrink-0 {
   flex-shrink: 0;

@@ -19,7 +19,7 @@ const title = computed(() => {
     'device-detail': '设备详情',
     'device-logs': '设备日志',
     firmware: '固件管理',
-    'account-password': '修改密码'
+    'account-password': '账号 · 修改密码'
   }
   return m[String(route.name)] || 'SmartRelay'
 })
@@ -246,7 +246,13 @@ onUnmounted(() => {
               </svg>
             </button>
             <div id="admin-user-dropdown" class="admin-user-panel" role="menu">
-              <RouterLink to="/account/password" class="admin-user-panel__item" role="menuitem" @click="closeUserMenu">
+              <RouterLink
+                to="/account/password"
+                class="admin-user-panel__item"
+                role="menuitem"
+                :aria-current="route.name === 'account-password' ? 'page' : undefined"
+                @click="closeUserMenu"
+              >
                 修改密码
               </RouterLink>
               <button

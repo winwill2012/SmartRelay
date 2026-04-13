@@ -75,8 +75,8 @@ async def dashboard_metrics(
         description="统计周期：today|week|month|year|d7|d30；与 from/to 二选一或同时给 from+to 走自定义",
         pattern="^(today|week|month|year|d7|d30)$",
     ),
-    range_from: Optional[date] = Query(None, alias="from"),
-    range_to: Optional[date] = Query(None, alias="to"),
+    range_from: Optional[datetime] = Query(None, alias="from"),
+    range_to: Optional[datetime] = Query(None, alias="to"),
     _admin_id: int = Depends(get_current_admin_id),
     session: AsyncSession = Depends(get_session),
 ):
@@ -209,25 +209,25 @@ async def admin_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
     q: Optional[str] = Query(None, description="昵称 / openid"),
-    reg_start: Optional[date] = Query(None),
-    reg_end: Optional[date] = Query(None),
-    login_start: Optional[date] = Query(None),
-    login_end: Optional[date] = Query(None),
+    reg_start: Optional[datetime] = Query(None),
+    reg_end: Optional[datetime] = Query(None),
+    login_start: Optional[datetime] = Query(None),
+    login_end: Optional[datetime] = Query(None),
 ):
     conds = []
     if q and q.strip():
         like = f"%{q.strip()}%"
         conds.append(or_(User.nickname.like(like), User.openid.like(like)))
     if reg_start is not None:
-        conds.append(User.created_at >= datetime.combine(reg_start, time.min))
+        conds.append(User.created_at >= reg_start)
     if reg_end is not None:
-        conds.append(User.created_at <= datetime.combine(reg_end, time.max))
+        conds.append(User.created_at <= reg_end)
     if login_start is not None:
         conds.append(User.last_login_at.isnot(None))
-        conds.append(User.last_login_at >= datetime.combine(login_start, time.min))
+        conds.append(User.last_login_at >= login_start)
     if login_end is not None:
         conds.append(User.last_login_at.isnot(None))
-        conds.append(User.last_login_at <= datetime.combine(login_end, time.max))
+        conds.append(User.last_login_at <= login_end)
 
     count_sel = select(func.count()).select_from(User)
     if conds:
@@ -274,7 +274,7 @@ async def admin_user_detail(
         .join(Device, Device.id == UserDevice.device_id)
         .where(UserDevice.user_id == user_id)
     )
-    pairs = r2.all()
+    pairs = sorted(r2.all(), key=lambda row: row[0].created_at, reverse=True)
     devices = []
     for ud, d in pairs:
         devices.append(
@@ -283,6 +283,7 @@ async def admin_user_detail(
                 "remark": ud.remark,
                 "role": ud.role.value,
                 "online": device_is_online(d.last_seen_at),
+                "bound_at": ud.created_at.isoformat() if ud.created_at else None,
             }
         )
     return ok(
@@ -302,8 +303,8 @@ async def admin_devices(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
     q: Optional[str] = Query(None, description="设备编号 / MAC / 备注"),
-    last_seen_start: Optional[date] = Query(None),
-    last_seen_end: Optional[date] = Query(None),
+    last_seen_start: Optional[datetime] = Query(None),
+    last_seen_end: Optional[datetime] = Query(None),
 ):
     conds = []
     if q and q.strip():
@@ -316,9 +317,9 @@ async def admin_devices(
     if last_seen_start is not None or last_seen_end is not None:
         conds.append(Device.last_seen_at.isnot(None))
     if last_seen_start is not None:
-        conds.append(Device.last_seen_at >= datetime.combine(last_seen_start, time.min))
+        conds.append(Device.last_seen_at >= last_seen_start)
     if last_seen_end is not None:
-        conds.append(Device.last_seen_at <= datetime.combine(last_seen_end, time.max))
+        conds.append(Device.last_seen_at <= last_seen_end)
 
     count_sel = select(func.count()).select_from(Device)
     if conds:
@@ -422,6 +423,33 @@ async def admin_device_logs(
     return ok({"items": items, "page": page, "page_size": page_size, "total": total})
 
 
+@router.get("/firmware")
+async def admin_firmware_list(
+    _admin_id: int = Depends(get_current_admin_id),
+    session: AsyncSession = Depends(get_session),
+):
+    r = await session.execute(select(FirmwareVersion).order_by(FirmwareVersion.id.desc()))
+    rows = r.scalars().all()
+    items = []
+    for fw in rows:
+        dc = await session.execute(
+            select(func.count()).select_from(Device).where(Device.fw_version == fw.version)
+        )
+        device_count = int(dc.scalar_one() or 0)
+        items.append(
+            {
+                "id": fw.id,
+                "version": fw.version,
+                "file_md5": fw.file_md5,
+                "release_notes": fw.release_notes,
+                "is_active": fw.is_active,
+                "created_at": fw.created_at.isoformat(),
+                "device_count": device_count,
+            }
+        )
+    return ok({"items": items})
+
+
 @router.post("/firmware")
 async def admin_firmware_upload(
     _admin_id: int = Depends(get_current_admin_id),
@@ -429,7 +457,7 @@ async def admin_firmware_upload(
     file: UploadFile = File(...),
     version: str = Form(...),
     release_notes: Optional[str] = Form(None),
-    is_active: bool = Form(True),
+    is_active: bool = Form(False),
 ):
     settings = get_settings()
     raw = await file.read()

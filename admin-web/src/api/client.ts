@@ -149,6 +149,11 @@ export async function getAdminDeviceLogs(
   return unwrap(res)
 }
 
+export async function getAdminFirmwareList() {
+  const res = await http.get<ApiEnvelope<{ items?: unknown[]; list?: unknown[] }>>('/admin/firmware')
+  return unwrap(res)
+}
+
 export async function uploadFirmware(form: FormData) {
   const res = await http.post<ApiEnvelope<unknown>>('/admin/firmware', form, {
     headers: { 'Content-Type': 'multipart/form-data' }

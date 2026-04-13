@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getAdminDeviceLogs } from '../api/client'
+import { formatAdminDateTime, logActionChip, formatLogSource } from '../lib/formatDisplay'
 
 const route = useRoute()
 const loading = ref(true)
@@ -37,6 +38,10 @@ watch(
   },
   { immediate: true }
 )
+
+function logActionForRow(row: Record<string, unknown>) {
+  return logActionChip(row.action as string, row.detail)
+}
 </script>
 
 <template>
@@ -56,9 +61,13 @@ watch(
         </thead>
         <tbody>
           <tr v-for="(row, idx) in list" :key="idx" class="border-t border-slate-100">
-            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ row.created_at }}</td>
-            <td class="px-3 py-2">{{ row.source }}</td>
-            <td class="px-3 py-2">{{ row.action }}</td>
+            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">
+              {{ formatAdminDateTime(row.created_at as string) }}
+            </td>
+            <td class="px-3 py-2">{{ formatLogSource(row.source as string) }}</td>
+            <td class="px-3 py-2">
+              <span :class="logActionForRow(row).chipClass">{{ logActionForRow(row).label }}</span>
+            </td>
             <td class="px-3 py-2 text-xs text-slate-500">{{ JSON.stringify(row.detail || {}) }}</td>
           </tr>
         </tbody>

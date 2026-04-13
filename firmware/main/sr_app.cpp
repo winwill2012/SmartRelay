@@ -663,7 +663,8 @@ void sr_app_main(void) {
         publish_report(false, 0, nullptr, nullptr);
       }
 
-      if (sr_mqtt_connected() && sr_time_ready() && (now_ms() - s_last_sched) >= 10000) {
+      /* 定时在设备本地执行：仅依赖 WiFi + SNTP，不依赖 MQTT（MQTT 异常时仍应到点动作） */
+      if (sr_time_ready() && (now_ms() - s_last_sched) >= 10000) {
         s_last_sched = now_ms();
         bool fs = false;
         int64_t sid = 0;

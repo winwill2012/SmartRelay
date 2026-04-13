@@ -74,7 +74,7 @@ class AdminLoginBody(BaseModel):
 
 class AdminPasswordBody(BaseModel):
     old_password: str
-    new_password: str = Field(..., min_length=6)
+    new_password: str = Field(..., min_length=8)
 
 
 class FirmwarePatchBody(BaseModel):

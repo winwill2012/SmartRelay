@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { isAxiosError } from 'axios'
 import { adminLogin, apiBase, setAdminToken } from '../api/client'
@@ -11,6 +11,8 @@ const password = ref('')
 const showPwd = ref(false)
 const loading = ref(false)
 const err = ref('')
+
+const reauthNotice = computed(() => route.query.reauth === '1')
 
 function formatLoginError(e: unknown): string {
   if (isAxiosError(e)) {
@@ -53,6 +55,9 @@ async function onSubmit(e: Event) {
       </div>
 
       <form class="admin-card p-7 space-y-5 shadow-xl" @submit="onSubmit">
+        <p v-if="reauthNotice" class="text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+          密码已更新，请使用新密码重新登录。
+        </p>
         <p v-if="err" class="text-sm text-red-600">{{ err }}</p>
         <div>
           <label for="username" class="block text-sm font-medium text-slate-700 mb-1.5">账号</label>
