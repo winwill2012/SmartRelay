@@ -4,12 +4,39 @@
     <text class="val mono">{{device_id}}</text>
   </view>
 
-  <button class="btn-check" loading="{{loading}}" bindtap="onCheck">检查更新</button>
+  <button class="btn-check" loading="{{loading}}" disabled="{{otaBusy}}" bindtap="onCheck">检查更新</button>
 
   <view wx:if="{{result}}" class="card result">
-    <text class="lab">服务器最新版本</text>
-    <text class="ver">{{result.version || result.latest_version || '—'}}</text>
-    <text wx:if="{{result.release_notes}}" class="notes">{{result.release_notes}}</text>
+    <block wx:if="{{result.latest}}">
+      <text class="lab">设备当前版本</text>
+      <text class="val mono">{{result.current_version}}</text>
+      <text class="lab row-gap">服务器最新版本（已启用）</text>
+      <text class="ver">{{result.latest.version}}</text>
+      <text wx:if="{{result.latest.release_notes}}" class="notes">{{result.latest.release_notes}}</text>
+      <block wx:if="{{result.update_available}}">
+        <text class="msg hint-new">有新版本可升级</text>
+        <button
+          class="btn-upgrade"
+          loading="{{otaBusy}}"
+          disabled="{{otaBusy}}"
+          bindtap="onStartOta"
+        >立即更新</button>
+      </block>
+      <text wx:else class="msg hint-ok">已与此版本一致</text>
+    </block>
+    <block wx:else>
+      <text class="lab">服务器最新版本</text>
+      <text class="ver muted">—</text>
+      <text class="msg">暂无已启用的固件版本，请在管理后台「固件管理」中启用目标版本后再试。</text>
+    </block>
     <text wx:if="{{result.message}}" class="msg">{{result.message}}</text>
+  </view>
+
+  <view wx:if="{{otaBusy && otaProgress}}" class="card ota-progress-card">
+    <text class="lab">升级进度</text>
+    <text class="ota-phase">{{otaProgress.phase ? otaProgress.phase : '—'}}</text>
+    <text class="ota-pct-num">{{otaProgressPercent}}%</text>
+    <progress class="ota-bar" percent="{{otaProgressPercent}}" show-info active stroke-width="10" />
+    <text class="msg ota-hint">进度由设备经 MQTT 上报，完成后设备将自动重启。</text>
   </view>
 </view>

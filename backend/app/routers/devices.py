@@ -12,7 +12,6 @@ from app.command_service import (
     insert_command_sent,
     new_cmd_id,
 )
-from app.config import get_settings
 from app.db import get_session
 from app.deps import get_current_user_id
 from app.errors import CONFLICT, DEVICE_OFFLINE, FORBIDDEN, NOT_FOUND, PARAM_ERROR
@@ -28,7 +27,7 @@ from app.models import (
     UserDevice,
     UserDeviceRole,
 )
-from app.mqtt_service import mqtt_publisher
+from app.mqtt_service import clear_ota_progress, get_ota_progress_snapshot, mqtt_publisher
 from app.response import err, ok
 from app.schedule_sync import build_schedules_payload
 from app.schemas import BindBody, CommandBody, PatchDeviceBody, ScheduleCreateBody, ShareBody
@@ -37,6 +36,57 @@ from app.utils import device_is_online
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+async def _execute_ota_firmware_push(
+    session: AsyncSession,
+    *,
+    dev: Device,
+    user_id: int,
+    client_cmd_id: Optional[str],
+) -> dict[str, Any]:
+    """向 MQTT `sr/v1/device/{id}/ota` 下发 ota.start；固件不订阅 cmd 主题处理 OTA。"""
+    r = await session.execute(
+        select(FirmwareVersion)
+        .where(FirmwareVersion.is_active.is_(True))
+        .order_by(FirmwareVersion.id.desc())
+        .limit(1)
+    )
+    fw = r.scalars().first()
+    if not fw:
+        return err(PARAM_ERROR, "暂无已启用的固件版本")
+    current = dev.fw_version or "0.0.0"
+    if fw.version == current:
+        return err(PARAM_ERROR, "当前已是最新版本")
+
+    cmd_id = new_cmd_id()
+    payload: dict[str, Any] = {
+        "version": fw.version,
+        "url": fw.file_url,
+        "md5": fw.file_md5,
+        "size": int(fw.file_size),
+    }
+    mqtt_body = {
+        "cmd_id": cmd_id,
+        "ts": int(datetime.now().timestamp() * 1000),
+        "type": "ota.start",
+        "version": 1,
+        "payload": payload,
+    }
+    topic = f"sr/v1/device/{dev.device_id}/ota"
+    clear_ota_progress(dev.device_id)
+    await insert_command_sent(
+        session,
+        device_pk=dev.id,
+        user_id=user_id,
+        cmd_id=cmd_id,
+        cmd_type="ota.start",
+        payload=payload,
+        client_cmd_id=client_cmd_id,
+        source=LogSource.user,
+    )
+    await mqtt_publisher.publish_json(topic, mqtt_body, qos=1)
+    return ok({"cmd_id": cmd_id, "target_version": fw.version})
 
 
 async def _get_user_device(
@@ -218,6 +268,11 @@ async def send_command(
         if existing:
             return ok({"cmd_id": existing})
 
+    if body.type == "ota.start":
+        return await _execute_ota_firmware_push(
+            session, dev=dev, user_id=user_id, client_cmd_id=body.client_cmd_id
+        )
+
     cmd_id = new_cmd_id()
     payload: dict[str, Any] = {}
     if body.type == "relay.set":
@@ -228,7 +283,6 @@ async def send_command(
     else:
         payload = {}
 
-    settings = get_settings()
     mqtt_body = {
         "cmd_id": cmd_id,
         "ts": int(datetime.now().timestamp() * 1000),
@@ -455,3 +509,31 @@ async def ota_check(
             },
         }
     )
+
+
+@router.post("/devices/{device_id}/ota/start")
+async def ota_start(
+    device_id: str,
+    user_id: int = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    """与 `POST .../command` + `type=ota.start` 等价；保留独立路径便于部分网关只转发显式 OTA URL。"""
+    pair = await _get_user_device(session, user_id, device_id)
+    if not pair:
+        return err(NOT_FOUND, "未找到设备")
+    _, dev = pair
+    if not device_is_online(dev.last_seen_at):
+        return err(DEVICE_OFFLINE, "设备离线")
+    return await _execute_ota_firmware_push(session, dev=dev, user_id=user_id, client_cmd_id=None)
+
+
+@router.get("/devices/{device_id}/ota/progress")
+async def ota_progress_poll(
+    device_id: str,
+    user_id: int = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    pair = await _get_user_device(session, user_id, device_id)
+    if not pair:
+        return err(NOT_FOUND, "未找到设备")
+    return ok(get_ota_progress_snapshot(device_id))

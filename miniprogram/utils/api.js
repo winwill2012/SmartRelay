@@ -2,11 +2,40 @@ const { getApiBase, isLocalhostApiBase } = require('./config.js')
 const auth = require('./auth.js')
 
 /**
+ * 从非标准 JSON（如 FastAPI { detail }、网关 HTML）解析可读错误文案，避免出现「错误 undefined」
+ */
+function parseHttpErrorMessage(body, statusCode) {
+  if (body && typeof body.message === 'string' && body.message.trim()) {
+    return body.message.trim()
+  }
+  const d = body && body.detail
+  if (typeof d === 'string' && d.trim()) return d.trim()
+  if (Array.isArray(d) && d.length) {
+    const parts = d
+      .map((x) => {
+        if (typeof x === 'string') return x
+        if (x && typeof x.msg === 'string') return x.msg
+        if (x && typeof x.message === 'string') return x.message
+        return ''
+      })
+      .filter(Boolean)
+    if (parts.length) return parts.join('; ')
+  }
+  if (body && body.code !== undefined && body.code !== null) {
+    return `错误码 ${body.code}`
+  }
+  if (statusCode && statusCode !== 200) {
+    return `请求失败 (${statusCode})`
+  }
+  return '服务返回异常，请稍后重试'
+}
+
+/**
  * 通用响应：{ code, message, data }
  * code === 0 成功
  */
 function request(options) {
-  const { url, method = 'GET', data = {}, header = {} } = options
+  const { url, method = 'GET', data = {}, header = {}, timeout = 20000 } = options
   const base = getApiBase()
   const token = auth.getToken()
   const h = Object.assign(
@@ -22,19 +51,33 @@ function request(options) {
       method,
       data: method === 'GET' ? data : data,
       header: h,
-      timeout: 20000,
+      timeout,
       success(res) {
         const body = res.data
+        const status = res.statusCode || 0
         if (typeof body !== 'object' || body === null) {
-          reject(new Error('响应格式错误'))
+          const err = new Error(
+            status >= 400 ? `请求失败 (${status})` : '响应格式错误'
+          )
+          err.httpStatus = status
+          reject(err)
           return
         }
         if (body.code === 0) {
           resolve(body.data)
           return
         }
-        const err = new Error(body.message || `错误 ${body.code}`)
-        err.code = body.code
+        if (body.code !== undefined && body.code !== null && body.code !== 0) {
+          const msg = parseHttpErrorMessage(body, status)
+          const err = new Error(msg)
+          err.code = body.code
+          err.httpStatus = status
+          reject(err)
+          return
+        }
+        const err = new Error(parseHttpErrorMessage(body, status))
+        if (body.code !== undefined) err.code = body.code
+        err.httpStatus = status
         reject(err)
       },
       fail(err) {
@@ -129,11 +172,12 @@ function patchDevice(deviceId, payload) {
   })
 }
 
-function postCommand(deviceId, payload) {
+function postCommand(deviceId, payload, opts) {
   return request({
     url: `/devices/${encodeURIComponent(deviceId)}/command`,
     method: 'POST',
-    data: payload
+    data: payload,
+    timeout: (opts && opts.timeout) || 20000
   })
 }
 
@@ -202,6 +246,22 @@ function otaCheck(deviceId) {
   })
 }
 
+function otaStart(deviceId) {
+  return request({
+    url: `/devices/${encodeURIComponent(deviceId)}/ota/start`,
+    method: 'POST',
+    data: {},
+    timeout: 60000
+  })
+}
+
+function getOtaProgress(deviceId) {
+  return request({
+    url: `/devices/${encodeURIComponent(deviceId)}/ota/progress`,
+    method: 'GET'
+  })
+}
+
 function getNotifications() {
   return request({ url: '/notifications', method: 'GET' })
 }
@@ -246,6 +306,8 @@ module.exports = {
   postShare,
   getShares,
   otaCheck,
+  otaStart,
+  getOtaProgress,
   getNotifications,
   patchNotificationRead,
   deleteNotification,

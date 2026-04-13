@@ -49,6 +49,10 @@ export function createClient(): AxiosInstance {
       // Axios 1.x 使用 AxiosHeaders，用 set 确保 Authorization 一定带上
       config.headers.set('Authorization', `Bearer ${t}`)
     }
+    // 实例默认 Content-Type 为 json；上传 FormData 时必须去掉，由运行时自动带 multipart boundary
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      config.headers.delete('Content-Type')
+    }
     return config
   })
   c.interceptors.response.use(

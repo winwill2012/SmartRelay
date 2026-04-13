@@ -3,6 +3,7 @@ import json
 import logging
 import re
 import secrets
+import time
 from datetime import datetime
 from typing import Any, Optional
 
@@ -32,6 +33,29 @@ _processed_ack_cmd_ids: set[str] = set()
 _ACK_DEDUP_MAX = 10_000
 
 TOPIC_RE = re.compile(r"^sr/v1/device/([^/]+)/(report|ack|heartbeat|ota/progress)$")
+
+# 设备上行 ota/progress，供小程序轮询展示（进程内；多实例部署需改 Redis 等）
+_ota_progress_by_device: dict[str, dict[str, Any]] = {}
+_OTA_PROGRESS_TTL_MS = 600_000
+
+
+def clear_ota_progress(device_id_str: str) -> None:
+    _ota_progress_by_device.pop(device_id_str, None)
+
+
+def get_ota_progress_snapshot(device_id_str: str) -> dict[str, Any]:
+    row = _ota_progress_by_device.get(device_id_str)
+    if not row:
+        return {"active": False, "percent": None, "phase": None, "ts": None}
+    ts = row.get("ts")
+    if isinstance(ts, (int, float)) and ts > 0 and (time.time() * 1000 - ts) > _OTA_PROGRESS_TTL_MS:
+        return {"active": False, "percent": None, "phase": None, "ts": None}
+    return {
+        "active": True,
+        "percent": row.get("percent"),
+        "phase": row.get("phase"),
+        "ts": row.get("ts"),
+    }
 
 
 def _parse_topic(topic: str) -> Optional[tuple[str, str]]:
@@ -217,6 +241,19 @@ async def _handle_uplink(session: AsyncSession, device_id_str: str, kind: str, r
         await _handle_ack(session, device, payload)
     elif kind == "ota/progress":
         await _touch_device_last_seen(session, device.id)
+        try:
+            pct_raw = payload.get("percent")
+            phased = payload.get("phase", "")
+            ts_raw = payload.get("ts")
+            pct = int(pct_raw) if pct_raw is not None else 0
+            ts_ms = int(ts_raw) if ts_raw is not None else int(time.time() * 1000)
+            _ota_progress_by_device[device_id_str] = {
+                "percent": max(0, min(100, pct)),
+                "phase": str(phased) if phased is not None else "",
+                "ts": ts_ms,
+            }
+        except (TypeError, ValueError):
+            pass
 
 
 async def mqtt_ingest_loop(stop: asyncio.Event) -> None:

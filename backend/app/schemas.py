@@ -27,7 +27,7 @@ class PatchDeviceBody(BaseModel):
 
 
 class CommandBody(BaseModel):
-    type: Literal["relay.set", "relay.toggle"]
+    type: Literal["relay.set", "relay.toggle", "ota.start"]
     client_cmd_id: Optional[str] = None
     payload: Optional[dict[str, Any]] = None
 
