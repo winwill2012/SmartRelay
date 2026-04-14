@@ -1,10 +1,10 @@
 <view class="page">
   <view class="card block">
     <text class="lab">当前设备</text>
-    <text class="val mono">{{device_id}}</text>
+    <text class="val mono" data-id="{{device_id}}" bindtap="copyDeviceId">{{device_id}}</text>
   </view>
 
-  <button class="btn-check" loading="{{loading}}" disabled="{{otaBusy}}" bindtap="onCheck">检查更新</button>
+  <button class="btn-check" loading="{{loading}}" disabled="{{otaBusy || loading}}" bindtap="onCheck">检查更新</button>
 
   <view wx:if="{{result}}" class="card result">
     <block wx:if="{{result.latest}}">

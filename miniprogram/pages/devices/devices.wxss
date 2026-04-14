@@ -202,54 +202,6 @@
   padding: 4rpx 0;
 }
 
-/* 扁平化：与「在线」徽章同类 — 浅底 + 主色描边/图形，无渐变与立体阴影 */
-.schedule-clock {
-  position: relative;
-  width: 40rpx;
-  height: 40rpx;
-  flex-shrink: 0;
-  border-radius: 50%;
-  box-sizing: border-box;
-  background: #eff6ff;
-  border: 2rpx solid #2563eb;
-}
-
-.schedule-clock-hand {
-  position: absolute;
-  left: 50%;
-  bottom: 50%;
-  transform-origin: 50% 100%;
-  background: #2563eb;
-}
-
-.schedule-clock-hand--hour {
-  width: 3rpx;
-  height: 10rpx;
-  margin-left: -1.5rpx;
-  border-radius: 2rpx;
-  transform: rotate(-36deg);
-}
-
-.schedule-clock-hand--min {
-  width: 2rpx;
-  height: 13rpx;
-  margin-left: -1rpx;
-  border-radius: 1rpx;
-  transform: rotate(56deg);
-}
-
-.schedule-clock-hub {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 4rpx;
-  height: 4rpx;
-  margin-left: -2rpx;
-  margin-top: -2rpx;
-  border-radius: 50%;
-  background: #2563eb;
-}
-
 .device-badge-wrap {
   flex-shrink: 0;
   display: flex;
@@ -276,6 +228,11 @@
   color: #64748b;
 }
 
+.badge-schedule {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
 .dot {
   width: 12rpx;
   height: 12rpx;
@@ -288,6 +245,10 @@
 
 .dot-off {
   background: #94a3b8;
+}
+
+.dot-schedule {
+  background: #3b82f6;
 }
 
 .device-inner .switch-track {

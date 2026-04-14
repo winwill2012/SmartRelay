@@ -27,7 +27,7 @@
   <view class="card info">
     <view class="row">
       <text class="k">设备 ID</text>
-      <text class="v mono">{{device_id}}</text>
+      <text class="v mono" data-id="{{device_id}}" bindtap="copyDeviceId">{{device_id}}</text>
     </view>
     <view class="row">
       <text class="k">固件版本</text>

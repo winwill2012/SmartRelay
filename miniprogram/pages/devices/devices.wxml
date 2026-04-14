@@ -42,13 +42,15 @@
               <view class="device-row-content">
                 <view class="device-name-col">
                   <text class="device-name">{{item.name}}</text>
-                  <text class="device-id-small">{{item.device_id}}</text>
+                  <text class="device-id-small" data-id="{{item.device_id}}" catchtap="copyDeviceId">{{item.device_id}}</text>
                 </view>
                 <view wx:if="{{item.next_schedule_summary}}" class="schedule-side">
-                  <view class="schedule-clock">
-                    <view class="schedule-clock-hand schedule-clock-hand--hour"/>
-                    <view class="schedule-clock-hand schedule-clock-hand--min"/>
-                    <view class="schedule-clock-hub"/>
+                  <view
+                    class="badge badge-schedule"
+                    data-id="{{item.device_id}}"
+                    catchtap="onOpenSchedules"
+                  >
+                    <view class="dot dot-schedule"/>定时
                   </view>
                 </view>
               </view>

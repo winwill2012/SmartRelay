@@ -209,6 +209,12 @@ function logActionForRow(row: Record<string, unknown>) {
   return logActionChip(row.action as string, row.detail)
 }
 
+function onlineChipClass(online: unknown) {
+  return online
+    ? 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+    : 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-slate-100 text-slate-500 ring-1 ring-slate-200'
+}
+
 onMounted(() => {
   load()
 })
@@ -274,7 +280,7 @@ onMounted(() => {
           <td class="px-4 py-3 font-mono text-xs">{{ row.device_id }}</td>
           <td class="px-4 py-3">{{ (row.binding_remark as string) || '—' }}</td>
           <td class="px-4 py-3">
-            <span :class="row.online ? 'text-emerald-600 font-medium' : 'text-slate-400'">
+            <span :class="onlineChipClass(row.online)">
               {{ row.online ? '在线' : '离线' }}
             </span>
           </td>
@@ -316,8 +322,9 @@ onMounted(() => {
         <div class="min-w-0">
           <p class="font-mono text-xs text-slate-600">{{ row.device_id }}</p>
           <p class="font-semibold text-slate-900 mt-1">{{ (row.binding_remark as string) || '—' }}</p>
-          <p class="text-xs text-slate-500 mt-1">
-            {{ row.online ? '在线' : '离线' }} · {{ row.fw_version || '—' }} ·
+          <p class="text-xs text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
+            <span :class="onlineChipClass(row.online)">{{ row.online ? '在线' : '离线' }}</span>
+            <span>{{ row.fw_version || '—' }} ·</span>
             {{ formatAdminDateTime(row.last_seen_at as string) }}
           </p>
         </div>
@@ -372,8 +379,10 @@ onMounted(() => {
           </div>
           <div class="flex justify-between gap-4 border-b border-slate-100 pb-2">
             <dt class="text-slate-500">在线</dt>
-            <dd :class="detailDevice.online ? 'text-emerald-600 font-medium' : 'text-slate-400'">
-              {{ detailDevice.online ? '在线' : '离线' }}
+            <dd>
+              <span :class="onlineChipClass(detailDevice.online)">
+                {{ detailDevice.online ? '在线' : '离线' }}
+              </span>
             </dd>
           </div>
           <div class="flex justify-between gap-4 border-b border-slate-100 pb-2">

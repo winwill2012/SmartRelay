@@ -143,5 +143,22 @@ Page({
       wx.hideLoading()
       wx.showToast({ title: err.message || '操作失败', icon: 'none' })
     }
+  },
+
+  copyDeviceId(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id) return
+    wx.setClipboardData({
+      data: String(id),
+      success: () => wx.showToast({ title: '设备ID已复制', icon: 'none' })
+    })
+  },
+
+  onOpenSchedules(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id) return
+    wx.navigateTo({
+      url: `/pages/schedules/schedules?device_id=${encodeURIComponent(String(id))}`
+    })
   }
 })

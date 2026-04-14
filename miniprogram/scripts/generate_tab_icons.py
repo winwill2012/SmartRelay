@@ -19,15 +19,17 @@ def _hex_rgb(h: str) -> tuple[int, int, int]:
 
 
 def draw_home(color: str) -> Image.Image:
-    """首页：圆角开关面板 + 拨键 + 状态灯（智能开关元素）。"""
+    """首页：简洁房屋轮廓，提升 tab 识别度。"""
     img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     c = _hex_rgb(color)
     w = 3
-    d.rounded_rectangle([14, 16, 66, 66], radius=10, outline=c, width=w)
-    d.ellipse([22, 24, 32, 34], outline=c, width=2)
-    d.rounded_rectangle([42, 30, 58, 54], radius=4, outline=c, width=w)
-    d.line([(50, 34), (50, 50)], fill=c, width=3)
+    # roof
+    d.line([(16, 40), (40, 18), (64, 40)], fill=c, width=w)
+    # house body
+    d.rounded_rectangle([21, 38, 59, 66], radius=6, outline=c, width=w)
+    # door
+    d.rounded_rectangle([36, 48, 44, 66], radius=2, outline=c, width=2)
     return img
 
 

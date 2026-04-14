@@ -105,10 +105,19 @@ Page({
     })
   },
 
+  copyDeviceId(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id) return
+    wx.setClipboardData({
+      data: String(id),
+      success: () => wx.showToast({ title: '设备ID已复制', icon: 'none' })
+    })
+  },
+
   onShareAppMessage() {
     const d = this.data.device
     return {
-      title: `邀请你使用设备：${d.name || 'SmartRelay'}`,
+      title: `邀请你使用设备：${d.name || '一念开合'}`,
       path: `/pages/login/login?from=${encodeURIComponent(d.device_id || '')}`
     }
   }

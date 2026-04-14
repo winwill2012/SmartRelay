@@ -21,7 +21,7 @@
           <image
             wx:else
             class="avatar-img avatar-img--logo"
-            src="../../logo.png"
+            src="../../Logo.jpg"
             mode="aspectFit"
           />
         </view>

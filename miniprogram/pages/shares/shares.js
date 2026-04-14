@@ -47,6 +47,15 @@ Page({
     })
   },
 
+  copyDeviceId(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id) return
+    wx.setClipboardData({
+      data: String(id),
+      success: () => wx.showToast({ title: '设备ID已复制', icon: 'none' })
+    })
+  },
+
   async onCancelShare(e) {
     const idx = Number(e.currentTarget.dataset.index)
     const item = this.data.list[idx]

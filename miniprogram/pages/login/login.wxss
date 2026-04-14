@@ -1,92 +1,154 @@
+/* 登录页：Logo、副文案、登录按钮为一组，组内间距紧凑；整组在页面垂直居中 */
+
 .page {
+  position: relative;
   min-height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: linear-gradient(
+    165deg,
+    #e8ecff 0%,
+    #f0edff 32%,
+    #f8fafc 58%,
+    #ffffff 100%
+  );
+}
+
+.bg-blob {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  opacity: 0.55;
+}
+
+.bg-blob--a {
+  width: 520rpx;
+  height: 520rpx;
+  top: -160rpx;
+  right: -140rpx;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, transparent 68%);
+}
+
+.bg-blob--b {
+  width: 420rpx;
+  height: 420rpx;
+  bottom: 120rpx;
+  left: -120rpx;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.14) 0%, transparent 70%);
+}
+
+.main {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  background: #f3f6fb;
+  justify-content: center;
+  align-items: stretch;
+  padding: 32rpx 48rpx calc(40rpx + env(safe-area-inset-bottom));
 }
 
-/* 上半：纯色渐变蓝底，白字保证可读 */
-.top {
+.brand-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   flex-shrink: 0;
-  padding: 72rpx 40rpx 64rpx;
-  background: linear-gradient(180deg, #1e3a8a 0%, #1d4ed8 55%, #2563eb 100%);
 }
 
-.brand {
+.logo-wrap {
+  width: 100%;
   display: flex;
   justify-content: center;
-  align-items: center;
+}
+
+.logo-card {
+  max-width: 100%;
+  padding: 20rpx 24rpx;
+  border-radius: 28rpx;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 4rpx 6rpx -1rpx rgba(15, 23, 42, 0.06),
+    0 24rpx 48rpx -12rpx rgba(15, 23, 42, 0.08),
+    0 0 0 1rpx rgba(255, 255, 255, 0.9) inset;
 }
 
 .brand-logo {
-  width: 420rpx;
-  max-width: 86%;
+  width: 260rpx;
+  max-width: 100%;
   display: block;
-  border-radius: 24rpx;
-  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.12);
+  border-radius: 16rpx;
 }
 
-/* 下半：浅灰底，正文深灰、链接深蓝 */
-.bottom {
-  flex: 1;
-  padding: 48rpx 48rpx calc(48rpx + env(safe-area-inset-bottom));
+.tagline {
+  margin-top: 20rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: #64748b;
+}
+
+/* 与上方副文案仅留一小段间距，避免与 Logo「一上一下」割裂 */
+.action-area {
+  margin-top: 32rpx;
+  flex-shrink: 0;
+  width: 100%;
   box-sizing: border-box;
 }
 
 .wx-btn {
   width: 100%;
-  border-radius: 24rpx;
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 50%, #15803d 100%);
-  color: #fff;
-  font-size: 30rpx;
-  font-weight: 600;
-  line-height: 88rpx;
+  height: 96rpx;
+  line-height: 96rpx;
   padding: 0;
+  border-radius: 48rpx;
+  background: #07c160;
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12rpx 32rpx rgba(22, 163, 74, 0.32),
-    0 0 0 1rpx rgba(255, 255, 255, 0.2) inset;
+  box-shadow: 0 10rpx 28rpx rgba(7, 193, 96, 0.28);
 }
 
 .wx-btn::after {
   border: none;
 }
 
+.wx-btn-hover {
+  opacity: 0.92;
+}
+
 .wx-btn-label {
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
 }
 
 .legal {
-  margin-top: 48rpx;
-  padding: 28rpx 24rpx;
+  margin-top: 24rpx;
+  padding: 0 8rpx;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  row-gap: 8rpx;
-  column-gap: 6rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-  background: #fff;
-  border-radius: 20rpx;
-  border: 2rpx solid #e2e8f0;
+  row-gap: 6rpx;
+  column-gap: 4rpx;
 }
 
-.legal-line {
-  color: #64748b;
-  font-size: 24rpx;
+.legal-text {
+  font-size: 22rpx;
+  line-height: 1.65;
+  color: #94a3b8;
 }
 
 .legal-link {
   display: inline;
-  font-size: 24rpx;
-  color: #2563eb;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 4rpx;
+  font-size: 22rpx;
+  line-height: 1.65;
+  color: #4f46e5;
+  font-weight: 500;
 }
 
 .legal-link-hover {
-  opacity: 0.75;
+  opacity: 0.72;
 }

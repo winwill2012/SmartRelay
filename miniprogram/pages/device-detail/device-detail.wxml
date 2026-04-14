@@ -5,7 +5,7 @@
       <view class="head-row">
         <view class="name-block">
           <text class="dev-name">{{device.name}}</text>
-          <text class="dev-id">{{device.device_id}}</text>
+          <text class="dev-id" data-id="{{device.device_id}}" bindtap="copyDeviceId">{{device.device_id}}</text>
         </view>
         <view wx:if="{{device.online}}" class="badge badge-on">
           <view class="dot dot-on"/>在线

@@ -91,17 +91,44 @@ function logRowVariant(action, detail) {
   return 'default'
 }
 
+function resolveOperatorText(action, operatorName) {
+  if (action === 'schedule.run') return '操作者：定时任务'
+  const op = operatorName != null && String(operatorName).trim() !== '' ? String(operatorName).trim() : '用户名'
+  return `操作者：${op}`
+}
+
+function resolveOperationTypeText(action, detail) {
+  if (!detail || typeof detail !== 'object') return ''
+
+  if (action === 'schedule.run') {
+    if (detail.action === 'on') return '操作类型：开'
+    if (detail.action === 'off') return '操作类型：关'
+    return ''
+  }
+
+  if (action === 'command.sent') {
+    if (detail.type === 'relay.set') {
+      const p = detail.payload || {}
+      if (typeof p.on === 'boolean') return `操作类型：${p.on ? '开' : '关'}`
+    }
+    if (detail.type === 'relay.toggle' && detail.payload && typeof detail.payload.on === 'boolean') {
+      return `操作类型：${detail.payload.on ? '开' : '关'}`
+    }
+  }
+
+  return ''
+}
+
 function mapLogItem(x) {
   const action = x.action || ''
   const detail = x.detail
-  const op = x.operator_name != null && String(x.operator_name).trim() !== '' ? String(x.operator_name).trim() : ''
   return {
     id: x.id,
     actionLabel: ACTION_ZH[action] || action || '操作',
-    detailText: formatLogDetail(action, detail),
+    detailText: resolveOperationTypeText(action, detail) || formatLogDetail(action, detail),
     timeText: formatLogTime(x.created_at),
     rowVariant: logRowVariant(action, detail),
-    operatorText: op ? `操作者：${op}` : ''
+    operatorText: resolveOperatorText(action, x.operator_name)
   }
 }
 

@@ -20,6 +20,14 @@
   display: block;
 }
 
+.id-text {
+  display: block;
+  margin-top: 8rpx;
+  color: #94a3b8;
+  font-size: 22rpx;
+  font-family: ui-monospace, monospace;
+}
+
 .s {
   font-size: 24rpx;
   color: #64748b;
@@ -58,3 +66,4 @@
   font-weight: 600;
   border: 2rpx solid #fecaca;
 }
+

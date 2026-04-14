@@ -29,6 +29,7 @@ async function requestOtaStart(deviceId) {
 Page({
   data: {
     device_id: '',
+    deviceOnline: false,
     loading: false,
     result: null,
     otaBusy: false,
@@ -44,6 +45,10 @@ Page({
 
   onLoad(q) {
     this.setData({ device_id: q.device_id || '' })
+  },
+
+  onShow() {
+    void this.refreshDeviceOnline(true)
   },
 
   onUnload() {
@@ -93,8 +98,33 @@ Page({
     })
   },
 
+  async refreshDeviceOnline(silent) {
+    const { device_id } = this.data
+    if (!device_id) {
+      this.setData({ deviceOnline: false })
+      return false
+    }
+    try {
+      const data = await api.getDevices()
+      const arr = Array.isArray(data) ? data : data.list || data.items || []
+      const hit = arr.find((d) => {
+        const did = d.device_id || d.deviceId || String(d.id || '')
+        return did === device_id
+      })
+      const online = !!(hit && hit.online)
+      this.setData({ deviceOnline: online })
+      return online
+    } catch (e) {
+      if (!silent) {
+        wx.showToast({ title: e.message || '获取设备状态失败', icon: 'none' })
+      }
+      return !!this.data.deviceOnline
+    }
+  },
+
   async onCheck() {
     if (!this.data.device_id) return
+    void this.refreshDeviceOnline(true)
     this._stopOtaPoll()
     this._stopPostCheck()
     this._otaMaxPercent = 0
@@ -131,6 +161,11 @@ Page({
   async onStartOta() {
     const { device_id, result, otaBusy } = this.data
     if (!device_id || !result || !result.update_available || !result.latest || otaBusy) return
+    const online = await this.refreshDeviceOnline()
+    if (!online) {
+      wx.showToast({ title: '设备离线，无法更新固件', icon: 'none' })
+      return
+    }
     const ok = await new Promise((resolve) => {
       wx.showModal({
         title: '确认升级',
@@ -328,5 +363,14 @@ Page({
         })
       }
     }, 2500)
+  },
+
+  copyDeviceId(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id) return
+    wx.setClipboardData({
+      data: String(id),
+      success: () => wx.showToast({ title: '设备ID已复制', icon: 'none' })
+    })
   }
 })

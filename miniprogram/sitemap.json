@@ -1,4 +1,4 @@
 {
-  "desc": "SmartRelay",
+  "desc": "一念开合",
   "rules": [{ "action": "allow", "page": "*" }]
 }
