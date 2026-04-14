@@ -12,6 +12,7 @@ import {
 type FwRow = {
   id: number
   version: string
+  file_url?: string
   file_md5?: string
   release_notes?: string | null
   is_active: boolean
@@ -355,6 +356,7 @@ onUnmounted(() => {
           <tr>
             <th class="px-4 py-3 font-semibold">版本</th>
             <th class="px-4 py-3 font-semibold">上传时间</th>
+            <th class="px-4 py-3 font-semibold">访问链接</th>
             <th class="px-4 py-3 font-semibold">
               <span class="block">是否启用</span>
               <span class="block font-normal text-slate-400 text-[11px] mt-0.5">关闭时设备无法拉取该版本</span>
@@ -376,6 +378,18 @@ onUnmounted(() => {
               </button>
             </td>
             <td class="px-4 py-3 text-slate-700 tabular-nums">{{ formatAdminDateTime(row.created_at) }}</td>
+            <td class="px-4 py-3">
+              <a
+                v-if="row.file_url"
+                :href="row.file_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                查看地址
+              </a>
+              <span v-else class="text-xs text-slate-400">暂无</span>
+            </td>
             <td class="px-4 py-3">
               <label
                 class="inline-flex cursor-pointer items-center gap-2"

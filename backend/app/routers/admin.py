@@ -441,6 +441,7 @@ async def admin_firmware_list(
             {
                 "id": fw.id,
                 "version": fw.version,
+                "file_url": fw.file_url,
                 "file_md5": fw.file_md5,
                 "release_notes": fw.release_notes,
                 "is_active": fw.is_active,
