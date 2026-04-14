@@ -204,7 +204,7 @@ async def bind_device(
     r = await session.execute(select(Device).where(Device.device_id == body.device_id))
     dev = r.scalar_one_or_none()
     if not dev:
-        return err(NOT_FOUND, "设备不存在")
+        return err(NOT_FOUND, "设备正在初始化，请稍候")
 
     r_ud = await session.execute(
         select(UserDevice).where(UserDevice.user_id == user_id, UserDevice.device_id == dev.id)
@@ -227,7 +227,7 @@ async def bind_device(
         if dev.last_seen_at is None:
             return err(
                 FORBIDDEN,
-                "请等待设备联网上报后再绑定，或稍后重试",
+                "设备正在初始化，请稍候",
             )
 
     ud = UserDevice(

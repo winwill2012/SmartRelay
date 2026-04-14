@@ -14,6 +14,10 @@ function defaultRemarkFromDeviceId(deviceId) {
   return `新设备 ${tail}`
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 Page({
   data: {
     device_id: '',
@@ -55,10 +59,26 @@ Page({
     }
     this.setData({ submitting: true })
     try {
-      await api.bindDevice({
+      const bindPayload = {
         device_id,
         name: (remark && String(remark).trim()) || defaultRemarkFromDeviceId(device_id)
-      })
+      }
+      // 配网成功后设备首次上报云端可能有数秒延迟；对「设备初始化中」类提示做短时重试，降低偶发失败。
+      let bound = false
+      let lastErr = null
+      for (let i = 0; i < 8; i++) {
+        try {
+          await api.bindDevice(bindPayload)
+          bound = true
+          break
+        } catch (e) {
+          lastErr = e
+          const msg = ((e && e.message) || '').trim()
+          if (!msg.includes('设备不存在') && !msg.includes('设备正在初始化')) throw e
+          if (i < 7) await sleep(1000)
+        }
+      }
+      if (!bound) throw lastErr || new Error('绑定失败')
       app.globalData.provisionResult = null
       wx.showToast({ title: '绑定成功', icon: 'success' })
       setTimeout(() => {

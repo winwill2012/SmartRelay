@@ -14,6 +14,11 @@ npm run dev
 
 **说明**：开发环境默认通过 Vite 把请求代理到 `http://127.0.0.1:8000`（见 `vite.config.ts`），一般**无需**配置 `.env`。若需浏览器直连其它地址，可复制 `.env.example` 为 `.env` 并设置 `VITE_API_BASE`（须含 `/api/v1`）。
 
+## 统一配置入口
+
+- 生产：`admin-web/.env.production`
+- 模板：`config/admin-web.env.production.example`
+
 ## 构建
 
 ```bash

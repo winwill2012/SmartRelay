@@ -5,10 +5,10 @@
 1. 使用 **微信开发者工具** 打开目录 `miniprogram/`（或仓库根下该目录）。
 2. **必须先启动后端**（默认 `http://127.0.0.1:8000`，与 `utils/config.js` 中 `DEFAULT_BASE` 一致）。
 3. 「**详情 → 本地设置**」中勾选 **「不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书」**（否则会出现 **`request:fail`**，无法访问本地或测试域名）。
-4. 若后端不在本机或端口不同，修改 `app.js` 里 `globalData.apiBase` 或 `utils/config.js` 的 `DEFAULT_BASE`，须以 **`/api/v1`** 结尾。
+4. 若后端不在本机或端口不同，修改 `config/app.config.js` 里的 `apiBase`（统一配置入口），须以 **`/api/v1`** 结尾。
 5. **真机调试 / 真机预览**（必读）：
    - **不能**使用 `http://127.0.0.1:8000`：真机上 `127.0.0.1` 指向**手机自己**，不是开发电脑。
-   - 在 **`miniprogram/app.js`** 里把 `globalData.apiBase` 改为 **`http://<电脑IPv4>:8000/api/v1`**（`ipconfig` 查看 IPv4；手机与电脑 **同一 WiFi**）。
+   - 在 **`miniprogram/config/app.config.js`** 里把 `apiBase` 改为 **`http://<电脑IPv4>:8000/api/v1`**（`ipconfig` 查看 IPv4；手机与电脑 **同一 WiFi**）。
    - 后端启动：`uvicorn app.main:app --host 0.0.0.0 --port 8000`（必须监听 `0.0.0.0`，否则外网/局域网连不上）。
    - 若仍 `request:fail`，检查 **Windows 防火墙** 是否放行 **8000** 端口入站。
    - 正式上线须使用 **HTTPS** 域名，并在 [微信公众平台](https://mp.weixin.qq.com) 配置 **request 合法域名**。

@@ -1,0 +1,7 @@
+# SmartRelay 固件运行时配置模板（拷贝到 firmware/sdkconfig.defaults 或 menuconfig 设置）
+
+CONFIG_SR_FW_VERSION="1.0.7"
+CONFIG_SR_MQTT_HOST="127.0.0.1"
+CONFIG_SR_MQTT_PORT=1883
+CONFIG_SR_MQTT_USER="SmartRelay"
+CONFIG_SR_MQTT_PASS="change_me"

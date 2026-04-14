@@ -1,0 +1,34 @@
+menu "SmartRelay Runtime Config"
+
+config SR_FW_VERSION
+    string "Firmware version"
+    default "1.0.7"
+    help
+        Runtime reported firmware version string.
+
+config SR_MQTT_HOST
+    string "MQTT host"
+    default "127.0.0.1"
+    help
+        MQTT broker hostname or IP.
+
+config SR_MQTT_PORT
+    int "MQTT port"
+    range 1 65535
+    default 1883
+    help
+        MQTT broker TCP port.
+
+config SR_MQTT_USER
+    string "MQTT username"
+    default "SmartRelay"
+    help
+        MQTT authentication username.
+
+config SR_MQTT_PASS
+    string "MQTT password"
+    default "change_me"
+    help
+        MQTT authentication password.
+
+endmenu

@@ -19,6 +19,7 @@
 #include "nvs_flash.h"
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "freertos/task.h"
 #include <cstring>
 #include <cstdlib>
@@ -53,6 +54,14 @@ static volatile bool s_ota_busy;
 static bool s_ble_runtime_active;
 static int s_last_ota_pub_pct = -1;
 static int64_t s_last_ota_pub_ms = 0;
+static QueueHandle_t s_mqtt_rx_q = nullptr;
+
+typedef struct {
+  size_t topic_len;
+  size_t payload_len;
+  char topic[96];
+  char payload[1024];
+} sr_mqtt_rx_msg_t;
 
 static int64_t now_ms(void) { return esp_timer_get_time() / 1000; }
 
@@ -548,7 +557,21 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
 }
 
 static void mqtt_wrap_cb(const char *topic, size_t topic_len, const char *payload, size_t payload_len) {
-  on_mqtt_msg(topic, topic_len, payload, payload_len);
+  if (!s_mqtt_rx_q || !topic || !payload) return;
+  sr_mqtt_rx_msg_t m = {};
+  m.topic_len = topic_len < (sizeof(m.topic) - 1) ? topic_len : (sizeof(m.topic) - 1);
+  m.payload_len = payload_len < (sizeof(m.payload) - 1) ? payload_len : (sizeof(m.payload) - 1);
+  memcpy(m.topic, topic, m.topic_len);
+  m.topic[m.topic_len] = '\0';
+  memcpy(m.payload, payload, m.payload_len);
+  m.payload[m.payload_len] = '\0';
+
+  // MQTT 事件回调线程只做轻量入队，避免在回调里执行重逻辑导致后续指令收不到。
+  if (xQueueSend(s_mqtt_rx_q, &m, 0) != pdTRUE) {
+    sr_mqtt_rx_msg_t drop = {};
+    (void)xQueueReceive(s_mqtt_rx_q, &drop, 0);
+    (void)xQueueSend(s_mqtt_rx_q, &m, 0);
+  }
 }
 
 static void mqtt_reconnect_tick(void) {
@@ -589,6 +612,8 @@ void sr_app_main(void) {
   sr_relay_init();
   sr_led_init();
   sr_led_set_mode(SR_LED_NET_FAIL_BLINK);
+  s_mqtt_rx_q = xQueueCreate(8, sizeof(sr_mqtt_rx_msg_t));
+  if (!s_mqtt_rx_q) ESP_LOGE(TAG, "mqtt rx queue create failed");
 
   ESP_ERROR_CHECK(nvs_flash_init());
   sr_schedule_load();
@@ -641,6 +666,15 @@ void sr_app_main(void) {
 
   for (;;) {
     esp_task_wdt_reset();
+
+    if (s_mqtt_rx_q) {
+      sr_mqtt_rx_msg_t m = {};
+      // 每个循环最多消费 6 条，避免日志/OTA 场景下一次性吃太久。
+      for (int i = 0; i < 6; i++) {
+        if (xQueueReceive(s_mqtt_rx_q, &m, 0) != pdTRUE) break;
+        on_mqtt_msg(m.topic, m.topic_len, m.payload, m.payload_len);
+      }
+    }
 
     if (s_prov_pending) {
       s_prov_pending = false;

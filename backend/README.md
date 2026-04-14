@@ -12,6 +12,7 @@
 
 1. 复制 `.env.example` 为 `.env`，填写 MySQL、MQTT、JWT 等（勿提交真实密码）。
 2. 默认管理员账号在**首次启动**时若不存在则创建：`admin` / `admin123`（密码经 bcrypt 写入 `admin_users`，不在 SQL 文件中存明文）。
+3. 学员部署建议优先使用根目录统一模板：`config/backend.env.example`。
 
 ## 安装与运行
 

@@ -1,3 +1,5 @@
+const appConfig = require('./config/app.config.js')
+
 App({
   globalData: {
     /**
@@ -6,7 +8,7 @@ App({
      * 电脑 cmd 执行 ipconfig 查看 IPv4；后端须 uvicorn --host 0.0.0.0 --port 8000；手机与电脑同 WiFi。
      * 生产环境：HTTPS + 微信公众平台 request 合法域名 iot.welinklab.com。
      */
-    apiBase: 'https://iot.welinklab.com/smart-relay/api/v1'
+    apiBase: appConfig.apiBase
   },
   onLaunch() {
     try {

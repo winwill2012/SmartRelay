@@ -2,7 +2,8 @@
 backend/.env
 *.local
 
-# 工具与 IDE
+# 数据库MQTT等配置信息
+resource.md
 
 # Python
 .venv/

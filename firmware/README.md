@@ -30,6 +30,12 @@ idf.py -p COMx flash monitor
 
 量产构建建议以本目录为准。
 
+## 统一配置入口
+
+- MQTT 与版本号统一走 `CONFIG_SR_*`（见 `main/Kconfig.projbuild`）。
+- 默认值在 `sdkconfig.defaults`，可用 `idf.py menuconfig` 按环境覆盖。
+- 模板可参考根目录：`config/firmware.sdkconfig.runtime.example`。
+
 ## sdkconfig / 分区
 
 - 根目录 `partitions.csv`：单 `factory`，约 1.75MB 应用区（可按 Flash 调整）。
