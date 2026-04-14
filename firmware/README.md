@@ -1,6 +1,6 @@
 # SmartRelay 固件（纯 ESP-IDF）
 
-本目录为**纯 ESP-IDF**实现（`idf.py` 构建），**不依赖** Arduino / PlatformIO。协议行为与 `firmware/src/main.cpp`（历史 Arduino 版）及《协议标准.md》对齐：MQTT 上下行、BLE 配网 GATT、HTTPS OTA+MD5、定时任务、继电器/LED/BOOT 清网等。
+本目录为**纯 ESP-IDF**实现（`idf.py` 构建），协议行为与《协议标准.md》对齐：MQTT 上下行、BLE 配网 GATT、HTTPS OTA+MD5、定时任务、继电器/LED/BOOT 清网等。
 
 ## 环境（推荐）
 
@@ -26,9 +26,9 @@ idf.py -p COMx flash monitor
 | BLE | `main/sr_ble.c` | NimBLE GATT 0xFFF0/FFF1/FFF2，分帧 notify |
 | JSON | 内置 `json`（cJSON） | cmd / report / schedule |
 | OTA | `main/sr_ota.cpp` | `esp_http_client` + `esp_ota_ops`，**`esp_rom_md5`** 流式校验 |
-| 配置 | `main/include/sr_config.h` | 与历史 `firmware/src/config.h` 可同步 |
+| 配置 | `main/include/sr_config.h` | 固件配置项 |
 
-历史 **PlatformIO** 工程在 `firmware/`；量产构建建议以本目录为准。
+量产构建建议以本目录为准。
 
 ## sdkconfig / 分区
 
@@ -39,7 +39,7 @@ idf.py -p COMx flash monitor
 
 若编译报错 `BLE_GAP_EVENT_LINK_ESTAB` 未定义，请对照当前 IDF 的 `ble_gap` 头文件改为连接事件（例如 `BLE_GAP_EVENT_CONNECT`）。
 
-## 与 Arduino 版的差异说明
+## 实现说明
 
 - **MQTT**：内置客户端 + 业务层退避重连。
 - **时间**：SNTP 同步后再跑 schedule。

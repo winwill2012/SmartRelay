@@ -1,7 +1,7 @@
 {
   "miniprogramRoot": "./",
   "projectname": "一念开合",
-  "description": "一念开合 微信小程序",
+  "description": "一念开合微信小程序",
   "appid": "wxbe5c849034ca3811",
   "setting": {
     "urlCheck": false,
