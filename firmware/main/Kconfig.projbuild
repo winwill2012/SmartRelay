@@ -1,5 +1,23 @@
 menu "SmartRelay Runtime Config"
 
+choice SR_LOG_PROFILE
+    prompt "Chip log profile"
+    default SR_LOG_PROFILE_DEV
+    help
+        Select logging detail level for development or production.
+
+config SR_LOG_PROFILE_DEV
+    bool "Development mode (verbose logs)"
+    help
+        Print detailed provisioning and MQTT command logs for debugging.
+
+config SR_LOG_PROFILE_PROD
+    bool "Production mode (core logs only)"
+    help
+        Keep only key startup/state/error logs for performance and security.
+
+endchoice
+
 config SR_FW_VERSION
     string "Firmware version"
     default "1.0.7"

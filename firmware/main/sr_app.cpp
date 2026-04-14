@@ -28,6 +28,14 @@
 
 static const char *TAG = "sr_app";
 
+#if CONFIG_SR_LOG_PROFILE_DEV
+#define SR_DEV_LOGI(...) ESP_LOGI(TAG, __VA_ARGS__)
+#define SR_DEV_MODE_NAME "development"
+#else
+#define SR_DEV_LOGI(...) ((void)0)
+#define SR_DEV_MODE_NAME "production"
+#endif
+
 static char s_device_id[24];
 static char s_ble_name[16];
 static std::string s_rx_plain;
@@ -66,6 +74,11 @@ typedef struct {
 static int64_t now_ms(void) { return esp_timer_get_time() / 1000; }
 
 static void log_prov(uint32_t seq, const char *stage, const char *detail) {
+#if CONFIG_SR_LOG_PROFILE_PROD
+  // 生产模式仅保留关键配网阶段日志
+  bool important = stage && (!strcmp(stage, "START") || !strcmp(stage, "END"));
+  if (!important) return;
+#endif
   if (detail && detail[0])
     ESP_LOGI(TAG, "[PROV#%lu][%lld ms][%s] %s", (unsigned long)seq, (long long)now_ms(), stage, detail);
   else
@@ -434,9 +447,17 @@ extern "C" void sr_app_ble_rx(const uint8_t *d, size_t len) {
 }
 
 static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload, size_t payload_len) {
+  SR_DEV_LOGI("mqtt rx topic=%.*s payload_len=%u", (int)topic_len, topic, (unsigned)payload_len);
+  if (payload_len > 0) {
+    int show = payload_len > 256 ? 256 : (int)payload_len;
+    SR_DEV_LOGI("mqtt rx payload=%.*s%s", show, payload, payload_len > 256 ? "...(truncated)" : "");
+  }
   std::string pl(payload, payload + payload_len);
   cJSON *root = cJSON_Parse(pl.c_str());
-  if (!root) return;
+  if (!root) {
+    ESP_LOGW(TAG, "mqtt json parse failed topic=%.*s len=%u", (int)topic_len, topic, (unsigned)payload_len);
+    return;
+  }
 
   cJSON *jcmd = cJSON_GetObjectItem(root, "cmd_id");
   const char *cmd_id = (cJSON_IsString(jcmd) && jcmd->valuestring) ? jcmd->valuestring : "";
@@ -455,6 +476,7 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
   }
 
   if (!strcmp(tp, "ping")) {
+    SR_DEV_LOGI("mqtt cmd ping cmd_id=%s", cmd_id);
     publish_ack_ok(cmd_id, cJSON_CreateObject());
     cJSON_Delete(root);
     return;
@@ -463,6 +485,7 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
   if (!strcmp(tp, "relay.set")) {
     cJSON *on = pay ? cJSON_GetObjectItem(pay, "on") : nullptr;
     bool v = cJSON_IsBool(on) ? cJSON_IsTrue(on) : false;
+    SR_DEV_LOGI("mqtt cmd relay.set cmd_id=%s target=%d", cmd_id, v ? 1 : 0);
     sr_relay_set(v);
     cJSON *ap = cJSON_CreateObject();
     cJSON_AddBoolToObject(ap, "relay_on", sr_relay_get());
@@ -473,6 +496,7 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
   }
 
   if (!strcmp(tp, "relay.toggle")) {
+    SR_DEV_LOGI("mqtt cmd relay.toggle cmd_id=%s", cmd_id);
     sr_relay_set(!sr_relay_get());
     cJSON *ap = cJSON_CreateObject();
     cJSON_AddBoolToObject(ap, "relay_on", sr_relay_get());
@@ -483,6 +507,7 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
   }
 
   if (!strcmp(tp, "ota.start")) {
+    SR_DEV_LOGI("mqtt cmd ota.start cmd_id=%s", cmd_id);
     const char *url = "";
     const char *md5e = "";
     size_t sz = 0;
@@ -530,6 +555,7 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
   }
 
   if (!strcmp(tp, "schedule.sync")) {
+    SR_DEV_LOGI("mqtt cmd schedule.sync cmd_id=%s", cmd_id);
     int64_t rev = 0;
     cJSON *sch = nullptr;
     if (pay && cJSON_IsObject(pay)) {
@@ -568,9 +594,13 @@ static void mqtt_wrap_cb(const char *topic, size_t topic_len, const char *payloa
 
   // MQTT 事件回调线程只做轻量入队，避免在回调里执行重逻辑导致后续指令收不到。
   if (xQueueSend(s_mqtt_rx_q, &m, 0) != pdTRUE) {
+    ESP_LOGW(TAG, "mqtt rx queue full, drop oldest topic=%.*s", (int)m.topic_len, m.topic);
     sr_mqtt_rx_msg_t drop = {};
     (void)xQueueReceive(s_mqtt_rx_q, &drop, 0);
     (void)xQueueSend(s_mqtt_rx_q, &m, 0);
+  } else {
+    SR_DEV_LOGI("mqtt enqueued topic=%.*s q_count=%u", (int)m.topic_len, m.topic,
+                (unsigned)uxQueueMessagesWaiting(s_mqtt_rx_q));
   }
 }
 
@@ -625,6 +655,11 @@ void sr_app_main(void) {
   snprintf(s_ble_name, sizeof(s_ble_name), "SR-%02X%02X", mac[4], mac[5]);
 
   sr_wifi_init();
+  ESP_LOGI(TAG, "boot profile=%s", SR_DEV_MODE_NAME);
+  ESP_LOGI(TAG, "boot firmware_version=%s", FW_VERSION);
+  ESP_LOGI(TAG, "boot mqtt_host=%s", MQTT_HOST);
+  ESP_LOGI(TAG, "boot mqtt_port=%d", MQTT_PORT);
+  ESP_LOGI(TAG, "boot mqtt_user=%s", MQTT_USER);
 
   char ssid[64] = {0}, pass[64] = {0};
   bool boot_ip = false;
@@ -672,6 +707,7 @@ void sr_app_main(void) {
       // 每个循环最多消费 6 条，避免日志/OTA 场景下一次性吃太久。
       for (int i = 0; i < 6; i++) {
         if (xQueueReceive(s_mqtt_rx_q, &m, 0) != pdTRUE) break;
+        SR_DEV_LOGI("mqtt dequeue topic=%s remaining=%u", m.topic, (unsigned)uxQueueMessagesWaiting(s_mqtt_rx_q));
         on_mqtt_msg(m.topic, m.topic_len, m.payload, m.payload_len);
       }
     }

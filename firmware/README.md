@@ -33,6 +33,9 @@ idf.py -p COMx flash monitor
 ## 统一配置入口
 
 - MQTT 与版本号统一走 `CONFIG_SR_*`（见 `main/Kconfig.projbuild`）。
+- 芯片模式支持 `Development / Production`（`idf.py menuconfig -> SmartRelay Runtime Config -> Chip log profile`）。
+  - Development：输出详细 MQTT 指令与配网过程日志。
+  - Production：仅输出核心启动/状态/异常日志。
 - 默认值在 `sdkconfig.defaults`，可用 `idf.py menuconfig` 按环境覆盖。
 - 模板可参考根目录：`config/firmware.sdkconfig.runtime.example`。
 
