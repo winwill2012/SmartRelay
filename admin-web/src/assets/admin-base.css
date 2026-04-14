@@ -985,6 +985,17 @@
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
+/* 管理后台：所有表格统一居中（含弹窗内表格） */
+.admin-table-wrap table,
+.admin-table-wrap table th,
+.admin-table-wrap table td,
+.admin-dialog table,
+.admin-dialog table th,
+.admin-dialog table td {
+  text-align: center !important;
+  vertical-align: middle;
+}
+
 /* 图表区域 */
 .admin-chart-area {
   position: relative;

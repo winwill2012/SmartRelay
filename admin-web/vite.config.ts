@@ -40,6 +40,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    base: '/smart-relay/admin/',
     plugins: [vue(), tailwindcss()],
     server: {
       proxy
