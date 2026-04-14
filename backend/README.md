@@ -5,7 +5,7 @@
 ## 环境要求
 
 - Python 3.10+
-- MySQL 8（已执行仓库根目录 `database/init.sql`）
+- MySQL 8（已执行 `backend/database/init.sql`）
 - MQTT Broker（可远程，与 `resource.md` 一致）
 
 ## 配置

@@ -10,8 +10,8 @@
   SR_MYSQL_PASS   必填（PowerShell 请用 $env:SR_MYSQL_PASS='...' 避免 $ 被解析）
 
 用法：
-  python database/apply.py
-  python database/apply.py database/migrations/001_add_foo.sql
+  python backend/database/apply.py
+  python backend/database/apply.py backend/database/init.sql
 """
 from __future__ import annotations
 

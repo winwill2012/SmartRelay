@@ -75,6 +75,18 @@ CREATE TABLE IF NOT EXISTS device_operation_logs (
   FOREIGN KEY (device_id) REFERENCES devices(id)
 );
 
+CREATE TABLE IF NOT EXISTS user_notifications (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  category VARCHAR(32) NOT NULL,
+  title VARCHAR(128) NOT NULL,
+  body VARCHAR(512) NOT NULL,
+  extra JSON NULL,
+  is_read TINYINT(1) NOT NULL DEFAULT 0,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_un_user_time (user_id, created_at)
+);
+
 CREATE TABLE IF NOT EXISTS firmware_versions (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   version VARCHAR(32) NOT NULL,
@@ -87,8 +99,25 @@ CREATE TABLE IF NOT EXISTS firmware_versions (
   UNIQUE KEY uk_fw_version (version)
 );
 
+-- 历史迁移合并：确保旧库补齐 relay_on 字段（兼容不支持 ADD COLUMN IF NOT EXISTS 的版本）
+SET @relay_on_col_count := (
+  SELECT COUNT(*)
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'devices'
+    AND COLUMN_NAME = 'relay_on'
+);
+SET @relay_on_sql := IF(
+  @relay_on_col_count = 0,
+  'ALTER TABLE devices ADD COLUMN relay_on TINYINT(1) NULL COMMENT ''最近一次上报的继电器状态'' AFTER fw_version',
+  'SELECT 1'
+);
+PREPARE relay_on_stmt FROM @relay_on_sql;
+EXECUTE relay_on_stmt;
+DEALLOCATE PREPARE relay_on_stmt;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- 默认管理员未在此插入（避免明文与脚本幂等）。任选其一：
 -- 1) 启动后端一次：会写入 admin / admin123（见 backend app/seed.py）
--- 2) 执行：SR_MYSQL_PASS=... python database/seed_admin.py
+-- 2) 执行：SR_MYSQL_PASS=... python backend/database/seed_admin.py
