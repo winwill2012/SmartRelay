@@ -19,17 +19,32 @@ def _hex_rgb(h: str) -> tuple[int, int, int]:
 
 
 def draw_home(color: str) -> Image.Image:
-    """首页：简洁房屋轮廓，提升 tab 识别度。"""
+    """首页：IC 封装 + 上下引脚 + 内核走线，示意芯片 / 智能设备。"""
     img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     c = _hex_rgb(color)
-    w = 3
-    # roof
-    d.line([(16, 40), (40, 18), (64, 40)], fill=c, width=w)
-    # house body
-    d.rounded_rectangle([21, 38, 59, 66], radius=6, outline=c, width=w)
-    # door
-    d.rounded_rectangle([36, 48, 44, 66], radius=2, outline=c, width=2)
+    outline_w = 3
+    thin = 2
+
+    # 封装本体（圆角矩形）
+    d.rounded_rectangle([18, 28, 63, 56], radius=6, outline=c, width=outline_w)
+
+    # 上排引脚
+    for x in (23, 30, 37, 44, 51, 58):
+        d.line([(x, 20), (x, 28)], fill=c, width=thin)
+    # 下排引脚
+    for x in (23, 30, 37, 44, 51, 58):
+        d.line([(x, 56), (x, 64)], fill=c, width=thin)
+
+    # Pin1 圆点标记（左上内侧，示意封装方向）
+    d.ellipse([23, 30, 28, 35], fill=c, outline=c)
+
+    # 内核 / 晶粒
+    d.rounded_rectangle([30, 35, 51, 49], radius=3, outline=c, width=thin)
+    # 简易「走线」
+    d.line([(40, 38), (40, 46)], fill=c, width=thin)
+    d.line([(33, 42), (47, 42)], fill=c, width=thin)
+
     return img
 
 
