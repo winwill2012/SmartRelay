@@ -245,9 +245,24 @@ function getDeviceShares(deviceId) {
   })
 }
 
+function getShareInvite(shareToken) {
+  return request({
+    url: `/shares/invite?share_token=${encodeURIComponent(shareToken)}`,
+    method: 'GET'
+  })
+}
+
 function acceptShare(shareToken) {
   return request({
     url: '/shares/accept',
+    method: 'POST',
+    data: { share_token: shareToken }
+  })
+}
+
+function rejectShare(shareToken) {
+  return request({
+    url: '/shares/reject',
     method: 'POST',
     data: { share_token: shareToken }
   })
@@ -328,7 +343,9 @@ module.exports = {
   postShare,
   getShares,
   getDeviceShares,
+  getShareInvite,
   acceptShare,
+  rejectShare,
   revokeShare,
   otaCheck,
   otaStart,

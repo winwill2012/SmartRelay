@@ -26,8 +26,7 @@ Page({
   data: {
     loading: true,
     device: {},
-    encodedName: '',
-    sharePath: ''
+    encodedName: ''
   },
 
   onLoad(q) {
@@ -50,20 +49,9 @@ Page({
         setTimeout(() => wx.navigateBack(), 500)
         return
       }
-      let sharePath = ''
-      //微信要求 onShareAppMessage 同步返回 path，需提前拉好；后端同设备复用一条 pending，不会刷屏
-      if (device.role === 'owner') {
-        try {
-          const res = await api.postShare(device.device_id, { expires_hours: 72 })
-          sharePath = (res && res.share_path) || ''
-        } catch (e) {
-          /* 离线等：页仍可用，分享时提示下拉刷新 */
-        }
-      }
       this.setData({
         device,
         encodedName: encodeURIComponent(device.name || ''),
-        sharePath,
         loading: false
       })
     } catch (e) {
@@ -133,14 +121,23 @@ Page({
   },
 
   onShareAppMessage() {
-    const d = this.data.device
-    const path = this.data.sharePath || '/pages/login/login'
-    if (!this.data.sharePath) {
-      wx.showToast({ title: '网络异常，请下拉刷新后重试', icon: 'none' })
+    const d = this.data.device || {}
+    const title = `邀请你使用设备：${d.name || '一念开合'}`
+    const fallback = '/pages/login/login'
+    if (d.role !== 'owner' || !d.device_id) {
+      return { title, path: fallback }
     }
-    return {
-      title: `邀请你使用设备：${d.name || '一念开合'}`,
-      path
-    }
+    // 基础库 2.11+：promise 在分享面板打开后解析，实现单次点击再请求后端生成邀请链
+    const promise = api
+      .postShare(d.device_id, { expires_hours: 72 })
+      .then((res) => ({
+        title,
+        path: (res && res.share_path) || fallback
+      }))
+      .catch((e) => {
+        wx.showToast({ title: e.message || '生成邀请失败', icon: 'none' })
+        return { title, path: fallback }
+      })
+    return { title, path: fallback, promise }
   }
 })

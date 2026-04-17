@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js')
+const auth = require('../../utils/auth.js')
 
 function formatShareTime(iso) {
   if (!iso) return '-'
@@ -19,32 +20,51 @@ Page({
   data: {
     loading: true,
     createdList: [],
-    joinedList: []
+    joinedList: [],
+    showInvite: false,
+    invite: null
   },
 
   onLoad(query) {
     const raw = query && query.share_token ? query.share_token : ''
     this.shareToken = raw ? decodeURIComponent(raw) : ''
-    /** 仅防止并发重复请求；失败时会置回 false 以便 onShow 再次重试 */
-    this._acceptInFlight = false
   },
 
   onShow() {
-    this.tryAcceptThenLoad()
-  },
-
-  async tryAcceptThenLoad() {
-    if (this.shareToken && !this._acceptInFlight) {
-      this._acceptInFlight = true
-      try {
-        await api.acceptShare(this.shareToken)
-        wx.showToast({ title: '已接受分享，可在首页控制设备', icon: 'success' })
-      } catch (e) {
-        this._acceptInFlight = false
-        wx.showToast({ title: e.message || '接受分享失败', icon: 'none' })
-      }
+    if (this.shareToken && !auth.isLoggedIn()) {
+      const back = `/pages/shares/shares?share_token=${encodeURIComponent(this.shareToken)}`
+      wx.redirectTo({ url: `/pages/login/login?redirect=${encodeURIComponent(back)}` })
+      return
+    }
+    if (this.shareToken && auth.isLoggedIn()) {
+      this.openInviteFlow()
+      return
     }
     this.load()
+  },
+
+  async openInviteFlow() {
+    this.setData({ loading: true, showInvite: false, invite: null })
+    try {
+      const preview = await api.getShareInvite(this.shareToken)
+      if (preview && preview.already_accepted) {
+        wx.showToast({ title: '您已接受该分享', icon: 'success' })
+        this.shareToken = ''
+        this.setData({ loading: false })
+        this.load()
+        return
+      }
+      this.setData({
+        showInvite: true,
+        invite: preview,
+        loading: false
+      })
+    } catch (e) {
+      this.shareToken = ''
+      this.setData({ loading: false, showInvite: false, invite: null })
+      wx.showToast({ title: e.message || '邀请无效或已过期', icon: 'none' })
+      this.load()
+    }
   },
 
   async load() {
@@ -57,6 +77,38 @@ Page({
       this.setData({ createdList, joinedList, loading: false })
     } catch (e) {
       this.setData({ loading: false, createdList: [], joinedList: [] })
+    }
+  },
+
+  async onAcceptInvite() {
+    if (!this.shareToken) return
+    wx.showLoading({ title: '处理中…', mask: true })
+    try {
+      await api.acceptShare(this.shareToken)
+      wx.hideLoading()
+      this.shareToken = ''
+      this.setData({ showInvite: false, invite: null })
+      wx.showToast({ title: '已接受，可在首页控制设备', icon: 'success' })
+      setTimeout(() => wx.switchTab({ url: '/pages/devices/devices' }), 400)
+    } catch (e) {
+      wx.hideLoading()
+      wx.showToast({ title: e.message || '接受失败', icon: 'none' })
+    }
+  },
+
+  async onRejectInvite() {
+    if (!this.shareToken) return
+    wx.showLoading({ title: '处理中…', mask: true })
+    try {
+      await api.rejectShare(this.shareToken)
+      wx.hideLoading()
+      this.shareToken = ''
+      this.setData({ showInvite: false, invite: null })
+      wx.showToast({ title: '已拒绝该分享', icon: 'none' })
+      this.load()
+    } catch (e) {
+      wx.hideLoading()
+      wx.showToast({ title: e.message || '操作失败', icon: 'none' })
     }
   },
 

@@ -1,5 +1,17 @@
 <view class="page">
   <view wx:if="{{loading}}" class="hint">加载中…</view>
+  <block wx:elif="{{showInvite && invite}}">
+    <view class="invite-card">
+      <text class="invite-title">收到设备分享邀请</text>
+      <text class="invite-device">{{invite.device_display_name || invite.device_id || '未知设备'}}</text>
+      <text class="invite-meta">来自 {{invite.owner_display_name || '设备拥有者'}}</text>
+      <text wx:if="{{invite.device_id}}" class="id-text" data-id="{{invite.device_id}}" bindtap="copyDeviceId">设备ID {{invite.device_id}}</text>
+      <view class="invite-actions">
+        <button class="act act-accept" bindtap="onAcceptInvite">接受</button>
+        <button class="act act-reject" bindtap="onRejectInvite">拒绝</button>
+      </view>
+    </view>
+  </block>
   <view wx:elif="{{createdList.length === 0 && joinedList.length === 0}}" class="hint">暂无分享记录</view>
   <view wx:else>
     <view wx:if="{{joinedList.length > 0}}" class="group-title">我加入的设备</view>

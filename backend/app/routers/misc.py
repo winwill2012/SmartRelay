@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import desc, or_, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -196,6 +196,162 @@ async def shares(
     owner_items = sorted(owner_dedupe.values(), key=lambda x: int(x["id"]), reverse=True)
     final_items = owner_items + items
     return ok({"items": final_items})
+
+
+async def _owner_device_display_name_async(session: AsyncSession, owner_user_id: int, device_pk: int, fallback: str) -> str:
+    r = await session.execute(
+        select(UserDevice.remark).where(
+            UserDevice.user_id == owner_user_id,
+            UserDevice.device_id == device_pk,
+        )
+    )
+    row = r.scalar_one_or_none()
+    rem = (row or "").strip() if row else ""
+    return rem or fallback
+
+
+@router.get("/shares/invite")
+async def share_invite_info(
+    share_token: str = Query(..., alias="share_token"),
+    user_id: int = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    """登录后查看分享邀请概要（不自动接受）。"""
+    token = (share_token or "").strip()
+    if not token:
+        return err(PARAM_ERROR, "缺少分享令牌")
+
+    settings = get_settings()
+    now = datetime.now()
+
+    r = await session.execute(
+        select(DeviceShareToken, Device, User)
+        .join(Device, Device.id == DeviceShareToken.device_id)
+        .join(User, User.id == DeviceShareToken.owner_user_id)
+        .where(DeviceShareToken.share_token == token)
+    )
+    row = r.first()
+    if row:
+        st, dev, owner = row
+        if int(st.owner_user_id) == int(user_id):
+            return err(FORBIDDEN, "不能接受自己分享的设备")
+
+        status = st.status.value
+        if status == ShareStatus.revoked.value:
+            return err(FORBIDDEN, "分享已取消")
+        if status == ShareStatus.expired.value:
+            return err(FORBIDDEN, "分享已过期")
+        if st.expires_at and st.expires_at < now:
+            return err(FORBIDDEN, "分享已过期")
+
+        if status == ShareStatus.accepted.value:
+            if st.target_user_id == user_id:
+                return ok({"already_accepted": True, "device_id": dev.device_id})
+            return err(FORBIDDEN, "该分享已被其他用户接受")
+
+        device_display_name = await _owner_device_display_name_async(
+            session, int(st.owner_user_id), int(dev.id), dev.device_id
+        )
+        owner_nickname = (owner.nickname.strip() if owner.nickname else "") or None
+        return ok(
+            {
+                "device_id": dev.device_id,
+                "device_display_name": device_display_name,
+                "owner_display_name": owner_nickname or f"用户{st.owner_user_id}",
+                "status": "pending",
+            }
+        )
+
+    pl = verify_stateless_share_token(token, settings.jwt_secret)
+    if not pl:
+        return err(NOT_FOUND, "分享链接不存在或已失效")
+    if int(time.time()) > int(pl["e"]):
+        return err(FORBIDDEN, "分享已过期")
+
+    owner_uid = int(pl["o"])
+    dev_pk = int(pl["d"])
+    if owner_uid == user_id:
+        return err(FORBIDDEN, "不能接受自己分享的设备")
+
+    r_dev = await session.execute(select(Device).where(Device.id == dev_pk))
+    dev = r_dev.scalar_one_or_none()
+    if not dev:
+        return err(NOT_FOUND, "分享链接不存在或已失效")
+
+    r_own = await session.execute(
+        select(UserDevice).where(
+            UserDevice.user_id == owner_uid,
+            UserDevice.device_id == dev.id,
+            UserDevice.role == UserDeviceRole.owner,
+        )
+    )
+    if not r_own.scalar_one_or_none():
+        return err(FORBIDDEN, "分享无效")
+
+    r_u = await session.execute(select(User).where(User.id == owner_uid))
+    owner = r_u.scalar_one_or_none()
+    owner_nickname = (owner.nickname.strip() if owner and owner.nickname else "") or None
+    device_display_name = await _owner_device_display_name_async(session, owner_uid, int(dev.id), dev.device_id)
+
+    tkey = stateless_token_storage_key(token)
+    r_st = await session.execute(select(DeviceShareToken).where(DeviceShareToken.share_token == tkey))
+    st_ex = r_st.scalar_one_or_none()
+    if st_ex:
+        if st_ex.status == ShareStatus.accepted and st_ex.target_user_id == user_id:
+            return ok({"already_accepted": True, "device_id": dev.device_id})
+        if st_ex.status == ShareStatus.accepted and st_ex.target_user_id and st_ex.target_user_id != user_id:
+            return err(FORBIDDEN, "该分享已被其他用户接受")
+        if st_ex.status in (ShareStatus.revoked, ShareStatus.expired):
+            return err(FORBIDDEN, "分享已失效")
+
+    return ok(
+        {
+            "device_id": dev.device_id,
+            "device_display_name": device_display_name,
+            "owner_display_name": owner_nickname or f"用户{owner_uid}",
+            "status": "pending",
+        }
+    )
+
+
+@router.post("/shares/reject")
+async def reject_share(
+    payload: dict = Body(default_factory=dict),
+    user_id: int = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    token = str((payload or {}).get("share_token") or "").strip()
+    if not token:
+        return err(PARAM_ERROR, "缺少分享令牌")
+
+    now = datetime.now()
+
+    r = await session.execute(select(DeviceShareToken).where(DeviceShareToken.share_token == token))
+    st = r.scalar_one_or_none()
+    if st:
+        if int(st.owner_user_id) == int(user_id):
+            return err(FORBIDDEN, "不能拒绝自己发起的分享")
+        if st.status != ShareStatus.pending or st.target_user_id is not None:
+            return err(FORBIDDEN, "该邀请已失效或已处理")
+        if st.expires_at and st.expires_at < now:
+            st.status = ShareStatus.expired
+            await session.commit()
+            return err(FORBIDDEN, "分享已过期")
+        await session.delete(st)
+        await session.commit()
+        return ok({})
+
+    settings = get_settings()
+    pl = verify_stateless_share_token(token, settings.jwt_secret)
+    if not pl:
+        return err(NOT_FOUND, "分享链接不存在或已失效")
+    if int(time.time()) > int(pl["e"]):
+        return err(FORBIDDEN, "分享已过期")
+    owner_uid = int(pl["o"])
+    if owner_uid == user_id:
+        return err(FORBIDDEN, "不能拒绝自己发起的分享")
+    # 无库记录的旧版签名链：客户端关闭邀请即可，服务端无持久 pending 可删
+    return ok({})
 
 
 @router.post("/shares/accept")
