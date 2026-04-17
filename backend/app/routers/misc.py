@@ -148,9 +148,16 @@ async def shares(
             status = ShareStatus.expired.value
         role = "owner" if st.owner_user_id == user_id else "target"
         target_nickname = (target_user.nickname.strip() if target_user and target_user.nickname else "") or None
-        target_display_name = target_nickname or (
-            f"用户{st.target_user_id}" if st.target_user_id else "待接受"
-        )
+        if st.target_user_id is None:
+            if status == ShareStatus.pending.value:
+                target_display_name = "待接收"
+                row_status_text = "待接收"
+            else:
+                target_display_name = "—"
+                row_status_text = STATUS_TEXT.get(status, status)
+        else:
+            target_display_name = target_nickname or f"用户{st.target_user_id}"
+            row_status_text = STATUS_TEXT.get(status, status)
         owner_nickname = (owner_user.nickname.strip() if owner_user and owner_user.nickname else "") or None
         owner_display_name = owner_nickname or f"用户{st.owner_user_id}"
         device_display_name = (
@@ -165,7 +172,7 @@ async def shares(
             "device_display_name": device_display_name,
             "role": role,
             "status": status,
-            "status_text": STATUS_TEXT.get(status, status),
+            "status_text": row_status_text,
             "target_user_id": st.target_user_id,
             "target_nickname": target_nickname,
             "target_display_name": target_display_name,
@@ -175,9 +182,6 @@ async def shares(
             "accepted_at": st.accepted_at.isoformat() if st.accepted_at else None,
         }
         if role == "owner":
-            # 无 target 的令牌仅用于生成微信链接，不属于「已分享给某人」的记录
-            if st.target_user_id is None:
-                continue
             # 同设备同被分享者只保留最新一条，避免记录重复刷屏
             dedupe_key = (dev.device_id, int(st.target_user_id or 0))
             old = owner_dedupe.get(dedupe_key)

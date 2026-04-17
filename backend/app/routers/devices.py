@@ -617,14 +617,11 @@ async def list_device_shares(
     owner_remark = ((ud_row.remark or "").strip()) if ud_row else ""
     device_display_name = owner_remark or dev.device_id
 
-    # 仅展示「已关联被分享者」的记录。pending 且无 target 的令牌只用于生成微信分享链接（ensureSharePath），不应出现在分享管理列表。
+    # 含「微信已发起、对方未接受」：pending 且无 target_user_id，与已接受记录一并展示；同设备无被分享者的多条 pending 去重为最新一条（dedupe_key=0）。
     r = await session.execute(
         select(DeviceShareToken, User)
         .outerjoin(User, User.id == DeviceShareToken.target_user_id)
-        .where(
-            DeviceShareToken.device_id == dev.id,
-            DeviceShareToken.target_user_id.isnot(None),
-        )
+        .where(DeviceShareToken.device_id == dev.id)
         .order_by(desc(DeviceShareToken.id))
         .limit(200)
     )
@@ -634,10 +631,19 @@ async def list_device_shares(
         status = st.status.value
         if status == ShareStatus.pending.value and st.expires_at and st.expires_at < now:
             status = ShareStatus.expired.value
-        target_nickname = (target_user.nickname.strip() if target_user and target_user.nickname else "") or None
-        target_display_name = target_nickname or (
-            f"用户{st.target_user_id}" if st.target_user_id else "待接受"
-        )
+
+        if st.target_user_id is None:
+            if status == ShareStatus.pending.value:
+                target_display_name = "待接收"
+                status_text = "待接收"
+            else:
+                target_display_name = "—"
+                status_text = _SHARE_STATUS_TEXT.get(status, status)
+        else:
+            target_nickname = (target_user.nickname.strip() if target_user and target_user.nickname else "") or None
+            target_display_name = target_nickname or f"用户{st.target_user_id}"
+            status_text = _SHARE_STATUS_TEXT.get(status, status)
+
         item: dict[str, Any] = {
             "id": st.id,
             "device_id": dev.device_id,
@@ -645,7 +651,7 @@ async def list_device_shares(
             "target_user_id": st.target_user_id,
             "target_display_name": target_display_name,
             "status": status,
-            "status_text": _SHARE_STATUS_TEXT.get(status, status),
+            "status_text": status_text,
             "created_at": st.created_at.isoformat() if st.created_at else None,
             "expires_at": st.expires_at.isoformat() if st.expires_at else None,
             "accepted_at": st.accepted_at.isoformat() if st.accepted_at else None,
