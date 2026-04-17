@@ -77,17 +77,6 @@
 
     <view class="card menu" wx:if="{{device.role === 'owner'}}">
       <button
-        wx:if="{{!shareReady}}"
-        class="share-btn"
-        bindtap="onPrepareShare"
-        hover-class="share-btn-hover"
-        hover-stay-time="100"
-      >
-        <text>分享给微信好友</text>
-        <text class="chev">›</text>
-      </button>
-      <button
-        wx:else
         class="share-btn"
         open-type="share"
         hover-class="share-btn-hover"
