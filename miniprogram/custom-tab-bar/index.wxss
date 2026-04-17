@@ -1,4 +1,4 @@
-/* 与页面 padding-bottom / fab 的 TAB_BAR_CLEARANCE_RPX 保持一致（app.wxss、devices、mine） */
+/* 主栏视觉高度约 112rpx（不含底部安全区）；与 app.wxss / devices / mine 中112rpx 占位一致 */
 .tab-bar {
   position: fixed;
   left: 0;
@@ -20,11 +20,10 @@
 .tab-bar__row {
   display: flex;
   flex-direction: row;
-  align-items: stretch;
+  align-items: center;
   justify-content: space-around;
   box-sizing: border-box;
-  min-height: 148rpx;
-  padding: 14rpx 32rpx 10rpx;
+  padding: 6rpx 24rpx 4rpx;
 }
 
 .tab-bar__item {
@@ -34,9 +33,8 @@
   align-items: center;
   justify-content: center;
   min-width: 0;
-  padding: 8rpx 16rpx;
-  /* 扩大可点区域，避免 iPhone 上显得过小 */
-  min-height: 108rpx;
+  padding: 8rpx 20rpx;
+  min-height: 88rpx;
 }
 
 .tab-bar__item--hover {
@@ -44,14 +42,14 @@
 }
 
 .tab-bar__icon {
-  width: 72rpx;
-  height: 72rpx;
+  width: 60rpx;
+  height: 60rpx;
   flex-shrink: 0;
 }
 
 .tab-bar__text {
-  margin-top: 10rpx;
-  font-size: 28rpx;
+  margin-top: 6rpx;
+  font-size: 26rpx;
   line-height: 1.2;
   font-weight: 500;
 }
