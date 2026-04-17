@@ -12,6 +12,7 @@ function pickDevice(list, id) {
       return {
         device_id: did,
         name: d.name || d.remark || '未命名设备',
+        role: d.role || 'owner',
         online: !!d.online,
         relay_on: !!d.relay_on,
         fw_version: d.fw_version || ''
@@ -25,7 +26,9 @@ Page({
   data: {
     loading: true,
     device: {},
-    encodedName: ''
+    encodedName: '',
+    sharePath: '',
+    shareReady: false
   },
 
   onLoad(q) {
@@ -51,8 +54,13 @@ Page({
       this.setData({
         device,
         encodedName: encodeURIComponent(device.name || ''),
+        shareReady: false,
+        sharePath: '',
         loading: false
       })
+      if (device.role === 'owner') {
+        this.ensureSharePath()
+      }
     } catch (e) {
       this.setData({ loading: false })
       wx.showToast({ title: e.message || '加载失败', icon: 'none' })
@@ -86,20 +94,25 @@ Page({
 
   onUnbind() {
     const id = this.deviceId
+    const role = (this.data.device && this.data.device.role) || 'owner'
+    const isShared = role !== 'owner'
     wx.showModal({
-      title: '解绑设备',
-      content: '解绑后将无法远程控制，确认吗？',
+      title: isShared ? '结束分享' : '解绑设备',
+      content: isShared ? '结束后将不再拥有该设备控制权限，确认吗？' : '解绑后将无法远程控制，确认吗？',
       success: async (res) => {
         if (!res.confirm) return
-        wx.showLoading({ title: '解绑中…', mask: true })
+        wx.showLoading({ title: isShared ? '处理中…' : '解绑中…', mask: true })
         try {
           await api.unbindDevice(id)
           wx.hideLoading()
-          wx.showToast({ title: '已解绑', icon: 'success' })
-          setTimeout(() => wx.navigateBack(), 400)
+          wx.showToast({ title: isShared ? '已结束分享' : '已解绑', icon: 'success' })
+          setTimeout(() => {
+            if (isShared) wx.switchTab({ url: '/pages/devices/devices' })
+            else wx.navigateBack()
+          }, 400)
         } catch (e) {
           wx.hideLoading()
-          wx.showToast({ title: e.message || '解绑失败', icon: 'none' })
+          wx.showToast({ title: e.message || (isShared ? '结束分享失败' : '解绑失败'), icon: 'none' })
         }
       }
     })
@@ -114,11 +127,42 @@ Page({
     })
   },
 
+  async onPrepareShare() {
+    await this.ensureSharePath(true)
+  },
+
+  async ensureSharePath(forceRefresh) {
+    const d = this.data.device || {}
+    if (!d.device_id) return ''
+    if (d.role !== 'owner') return ''
+    if (!forceRefresh && this.data.sharePath) return this.data.sharePath
+    try {
+      const res = await api.postShare(d.device_id, { expires_hours: 72 })
+      const p = (res && res.share_path) || ''
+      if (!p) {
+        this.setData({ sharePath: '', shareReady: false })
+        wx.showToast({ title: '分享服务未就绪，请升级后端', icon: 'none' })
+        return ''
+      }
+      this.setData({ sharePath: p, shareReady: !!p })
+      return p
+    } catch (e) {
+      this.setData({ shareReady: false })
+      wx.showToast({ title: e.message || '生成分享链接失败', icon: 'none' })
+      return ''
+    }
+  },
+
   onShareAppMessage() {
     const d = this.data.device
+    const path = this.data.sharePath || '/pages/login/login'
+    if (!this.data.sharePath) {
+      wx.showToast({ title: '分享链接准备中，请稍后重试', icon: 'none' })
+      this.ensureSharePath(true)
+    }
     return {
       title: `邀请你使用设备：${d.name || '一念开合'}`,
-      path: `/pages/login/login?from=${encodeURIComponent(d.device_id || '')}`
+      path
     }
   }
 })

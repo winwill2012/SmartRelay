@@ -1,8 +1,9 @@
 import logging
+import secrets
 import time
-from datetime import datetime, time as dt_time
+from datetime import datetime, time as dt_time, timedelta
 from typing import Any, Optional
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import delete, func, select
@@ -19,6 +20,7 @@ from app.deps import get_current_user_id
 from app.errors import CONFLICT, DEVICE_OFFLINE, FORBIDDEN, NOT_FOUND, PARAM_ERROR
 from app.models import (
     Device,
+    DeviceShareToken,
     DeviceOperationLog,
     FirmwareVersion,
     LogSource,
@@ -28,6 +30,7 @@ from app.models import (
     User,
     UserDevice,
     UserDeviceRole,
+    ShareStatus,
 )
 from app.mqtt_service import clear_ota_progress_state, mqtt_publisher
 from app.response import err, ok
@@ -128,6 +131,18 @@ async def _get_user_device(
     )
     ud = r2.scalar_one_or_none()
     if not ud:
+        return None
+    return ud, dev
+
+
+async def _get_owner_device(
+    session: AsyncSession, user_id: int, device_id_str: str
+) -> Optional[tuple[UserDevice, Device]]:
+    pair = await _get_user_device(session, user_id, device_id_str)
+    if not pair:
+        return None
+    ud, dev = pair
+    if ud.role != UserDeviceRole.owner:
         return None
     return ud, dev
 
@@ -253,11 +268,16 @@ async def unbind_device(
     if not pair:
         return err(NOT_FOUND, "未找到绑定关系")
     ud, dev = pair
-    if ud.role != UserDeviceRole.owner:
-        return err(FORBIDDEN, "仅所有者可解绑")
+    if ud.role == UserDeviceRole.owner:
+        # 所有者解绑：仅移除自己的 owner 绑定
+        await session.execute(delete(UserDevice).where(UserDevice.id == ud.id))
+        await session.commit()
+        return ok({"device_id": dev.device_id, "action": "unbind_owner"})
+
+    # 被分享者结束分享：移除 shared 绑定
     await session.execute(delete(UserDevice).where(UserDevice.id == ud.id))
     await session.commit()
-    return ok({"device_id": dev.device_id})
+    return ok({"device_id": dev.device_id, "action": "leave_share"})
 
 
 @router.patch("/devices/{device_id}")
@@ -286,7 +306,7 @@ async def send_command(
     pair = await _get_user_device(session, user_id, device_id)
     if not pair:
         return err(NOT_FOUND, "未找到设备")
-    _, dev = pair
+    ud, dev = pair
     if not device_is_online(dev.last_seen_at):
         return err(DEVICE_OFFLINE, "设备离线")
 
@@ -296,6 +316,8 @@ async def send_command(
             return ok({"cmd_id": existing})
 
     if body.type == "ota.start":
+        if ud.role != UserDeviceRole.owner:
+            return err(FORBIDDEN, "仅设备拥有者可执行固件更新")
         return await _execute_ota_firmware_push(
             session, dev=dev, user_id=user_id, client_cmd_id=body.client_cmd_id
         )
@@ -489,18 +511,78 @@ async def create_schedule(
 
 
 @router.post("/devices/{device_id}/share")
-async def share_stub(
+async def create_share(
     device_id: str,
     body: ShareBody,
     user_id: int = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    pair = await _get_user_device(session, user_id, device_id)
+    pair = await _get_owner_device(session, user_id, device_id)
     if not pair:
-        return err(NOT_FOUND, "未找到设备")
+        return err(FORBIDDEN, "仅设备所有者可分享")
     _, dev = pair
-    logger.info("share requested device=%s body=%s", dev.device_id, body.model_dump())
-    return ok({"status": "pending", "message": "v1 分享流程待与 share_tokens 表对接"})
+    now = datetime.now()
+    expires_hours = int(body.expires_hours or 72)
+    expires_at = now + timedelta(hours=expires_hours)
+
+    # 同设备未过期待分享令牌复用，避免重复点击导致大量 pending 记录。
+    existing_r = await session.execute(
+        select(DeviceShareToken)
+        .where(
+            DeviceShareToken.owner_user_id == user_id,
+            DeviceShareToken.device_id == dev.id,
+            DeviceShareToken.status == ShareStatus.pending,
+            DeviceShareToken.target_user_id.is_(None),
+        )
+        .order_by(DeviceShareToken.id.desc())
+        .limit(1)
+    )
+    existing = existing_r.scalar_one_or_none()
+    if existing and (not existing.expires_at or existing.expires_at > now):
+        share_entry = f"/pages/shares/shares?share_token={existing.share_token}&device_id={dev.device_id}"
+        share_path = f"/pages/login/login?redirect={quote(share_entry, safe='')}"
+        return ok(
+            {
+                "share_id": existing.id,
+                "share_token": existing.share_token,
+                "share_path": share_path,
+                "device_id": dev.device_id,
+                "device_name": dev.device_id,
+                "expires_at": existing.expires_at.isoformat() if existing.expires_at else None,
+                "status": "pending",
+            }
+        )
+
+    token = secrets.token_urlsafe(24)
+
+    share = DeviceShareToken(
+        owner_user_id=user_id,
+        target_user_id=None,
+        device_id=dev.id,
+        share_token=token,
+        status=ShareStatus.pending,
+        created_at=now,
+        expires_at=expires_at,
+        accepted_at=None,
+        revoked_at=None,
+    )
+    session.add(share)
+    await session.commit()
+    await session.refresh(share)
+
+    share_entry = f"/pages/shares/shares?share_token={token}&device_id={dev.device_id}"
+    share_path = f"/pages/login/login?redirect={quote(share_entry, safe='')}"
+    return ok(
+        {
+            "share_id": share.id,
+            "share_token": token,
+            "share_path": share_path,
+            "device_id": dev.device_id,
+            "device_name": dev.device_id,
+            "expires_at": expires_at.isoformat(),
+            "status": "pending",
+        }
+    )
 
 
 @router.post("/devices/{device_id}/ota/check")
@@ -548,7 +630,9 @@ async def ota_start(
     pair = await _get_user_device(session, user_id, device_id)
     if not pair:
         return err(NOT_FOUND, "未找到设备")
-    _, dev = pair
+    ud, dev = pair
+    if ud.role != UserDeviceRole.owner:
+        return err(FORBIDDEN, "仅设备拥有者可执行固件更新")
     if not device_is_online(dev.last_seen_at):
         return err(DEVICE_OFFLINE, "设备离线")
     return await _execute_ota_firmware_push(session, dev=dev, user_id=user_id, client_cmd_id=None)

@@ -30,6 +30,7 @@ Page({
   data: {
     device_id: '',
     deviceOnline: false,
+    deviceRole: 'owner',
     loading: false,
     result: null,
     otaBusy: false,
@@ -112,7 +113,8 @@ Page({
         return did === device_id
       })
       const online = !!(hit && hit.online)
-      this.setData({ deviceOnline: online })
+      const role = (hit && hit.role) || this.data.deviceRole || 'owner'
+      this.setData({ deviceOnline: online, deviceRole: role })
       return online
     } catch (e) {
       if (!silent) {
@@ -159,8 +161,12 @@ Page({
   },
 
   async onStartOta() {
-    const { device_id, result, otaBusy } = this.data
+    const { device_id, result, otaBusy, deviceRole } = this.data
     if (!device_id || !result || !result.update_available || !result.latest || otaBusy) return
+    if (deviceRole !== 'owner') {
+      wx.showToast({ title: '被分享者不可更新固件', icon: 'none' })
+      return
+    }
     const online = await this.refreshDeviceOnline()
     if (!online) {
       wx.showToast({ title: '设备离线，无法更新固件', icon: 'none' })

@@ -66,13 +66,19 @@
       </navigator>
     </view>
 
-    <view class="card menu">
-      <button class="share-btn" open-type="share" data-id="{{device.device_id}}">
-        <text>分享给微信好友</text>
+    <view class="card menu" wx:if="{{device.role === 'owner'}}">
+      <button
+        class="share-btn"
+        open-type="share"
+        data-id="{{device.device_id}}"
+        bindtap="onPrepareShare"
+        disabled="{{!shareReady}}"
+      >
+        <text>{{shareReady ? '分享给微信好友' : '生成分享链接中…'}}</text>
         <text class="chev">›</text>
       </button>
     </view>
 
-    <button class="btn-unbind" bindtap="onUnbind">解绑设备</button>
+    <button class="btn-unbind" bindtap="onUnbind">{{device.role === 'owner' ? '解绑设备' : '结束分享'}}</button>
   </block>
 </view>

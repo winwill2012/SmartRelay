@@ -18,7 +18,7 @@
         <button
           class="btn-upgrade"
           loading="{{otaBusy}}"
-          disabled="{{otaBusy}}"
+          disabled="{{otaBusy || deviceRole !== 'owner'}}"
           bindtap="onStartOta"
         >立即更新</button>
       </block>
