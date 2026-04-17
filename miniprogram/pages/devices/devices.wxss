@@ -2,7 +2,8 @@
   box-sizing: border-box;
   position: relative;
   min-height: 100vh;
-  padding-bottom: calc(112rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(148rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(148rpx + env(safe-area-inset-bottom));
 }
 
 .layer {
