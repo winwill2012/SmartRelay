@@ -1,13 +1,14 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends
 from sqlalchemy import desc, or_, select, tuple_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.db import get_session
 from app.deps import get_current_user_id
-from app.errors import FORBIDDEN, NOT_FOUND, PARAM_ERROR
+from app.errors import CONFLICT, FORBIDDEN, NOT_FOUND, PARAM_ERROR
 from app.models import Device, DeviceShareToken, ShareStatus, User, UserDevice, UserDeviceRole, UserNotification
 from app.response import err, ok
 
@@ -196,7 +197,7 @@ async def shares(
 
 @router.post("/shares/accept")
 async def accept_share(
-    payload: dict,
+    payload: dict = Body(default_factory=dict),
     user_id: int = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
 ):
@@ -250,7 +251,30 @@ async def accept_share(
     st.target_user_id = user_id
     st.status = ShareStatus.accepted
     st.accepted_at = now
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        # 并发重复提交等导致 user_devices 唯一键冲突时，首次请求往往已成功；幂等返回
+        r2 = await session.execute(
+            select(DeviceShareToken, Device)
+            .join(Device, Device.id == DeviceShareToken.device_id)
+            .where(DeviceShareToken.share_token == token)
+        )
+        row2 = r2.first()
+        if not row2:
+            return err(NOT_FOUND, "分享链接不存在或已失效")
+        st2, dev2 = row2
+        if st2.status == ShareStatus.accepted and st2.target_user_id == user_id:
+            return ok({"device_id": dev2.device_id, "already_accepted": True})
+        r_ud2 = await session.execute(
+            select(UserDevice).where(UserDevice.user_id == user_id, UserDevice.device_id == dev2.id)
+        )
+        if r_ud2.scalar_one_or_none():
+            if st2.status == ShareStatus.accepted:
+                return ok({"device_id": dev2.device_id, "already_accepted": True})
+            return ok({"device_id": dev2.device_id, "accepted": True})
+        return err(CONFLICT, "接受分享失败，请稍后重试")
     return ok({"device_id": dev.device_id, "accepted": True})
 
 

@@ -25,7 +25,8 @@ Page({
   onLoad(query) {
     const raw = query && query.share_token ? query.share_token : ''
     this.shareToken = raw ? decodeURIComponent(raw) : ''
-    this.acceptedOnce = false
+    /** 仅防止并发重复请求；失败时会置回 false 以便 onShow 再次重试 */
+    this._acceptInFlight = false
   },
 
   onShow() {
@@ -33,12 +34,13 @@ Page({
   },
 
   async tryAcceptThenLoad() {
-    if (this.shareToken && !this.acceptedOnce) {
-      this.acceptedOnce = true
+    if (this.shareToken && !this._acceptInFlight) {
+      this._acceptInFlight = true
       try {
         await api.acceptShare(this.shareToken)
         wx.showToast({ title: '已接受分享，可在首页控制设备', icon: 'success' })
       } catch (e) {
+        this._acceptInFlight = false
         wx.showToast({ title: e.message || '接受分享失败', icon: 'none' })
       }
     }
