@@ -617,10 +617,14 @@ async def list_device_shares(
     owner_remark = ((ud_row.remark or "").strip()) if ud_row else ""
     device_display_name = owner_remark or dev.device_id
 
+    # 仅展示「已关联被分享者」的记录。pending 且无 target 的令牌只用于生成微信分享链接（ensureSharePath），不应出现在分享管理列表。
     r = await session.execute(
         select(DeviceShareToken, User)
         .outerjoin(User, User.id == DeviceShareToken.target_user_id)
-        .where(DeviceShareToken.device_id == dev.id)
+        .where(
+            DeviceShareToken.device_id == dev.id,
+            DeviceShareToken.target_user_id.isnot(None),
+        )
         .order_by(desc(DeviceShareToken.id))
         .limit(200)
     )

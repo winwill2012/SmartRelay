@@ -175,6 +175,9 @@ async def shares(
             "accepted_at": st.accepted_at.isoformat() if st.accepted_at else None,
         }
         if role == "owner":
+            # 无 target 的令牌仅用于生成微信链接，不属于「已分享给某人」的记录
+            if st.target_user_id is None:
+                continue
             # 同设备同被分享者只保留最新一条，避免记录重复刷屏
             dedupe_key = (dev.device_id, int(st.target_user_id or 0))
             old = owner_dedupe.get(dedupe_key)
