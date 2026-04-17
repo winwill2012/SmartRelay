@@ -4,6 +4,27 @@ const api = require('../../utils/api.js')
 Page({
   data: { loading: false },
 
+  onLoad(query) {
+    this.redirect = ''
+    if (query && query.redirect) {
+      this.redirect = decodeURIComponent(query.redirect)
+    }
+    this.tryAutoRedirectIfLoggedIn()
+  },
+
+  onShow() {
+    this.tryAutoRedirectIfLoggedIn()
+  },
+
+  tryAutoRedirectIfLoggedIn() {
+    if (!auth.isLoggedIn()) return
+    if (this.redirect) {
+      wx.redirectTo({ url: this.redirect })
+      return
+    }
+    wx.switchTab({ url: '/pages/devices/devices' })
+  },
+
   onWxLogin() {
     if (this.data.loading) return
     this.setData({ loading: true })
@@ -42,7 +63,11 @@ Page({
             auth.setToken(token)
             wx.showToast({ title: '登录成功', icon: 'success' })
             setTimeout(() => {
-              wx.switchTab({ url: '/pages/devices/devices' })
+              if (this.redirect) {
+                wx.navigateTo({ url: this.redirect })
+              } else {
+                wx.switchTab({ url: '/pages/devices/devices' })
+              }
             }, 400)
             this.setData({ loading: false })
           })

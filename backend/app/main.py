@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.db import AsyncSessionLocal
 from app.db_migrations import (
+    ensure_device_share_tokens_table,
     ensure_devices_ota_progress_columns,
     ensure_devices_relay_on,
     ensure_user_notifications_table,
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
         await ensure_devices_relay_on(session)
         await ensure_devices_ota_progress_columns(session)
         await ensure_user_notifications_table(session)
+        await ensure_device_share_tokens_table(session)
         await ensure_default_admin(session)
 
     stop = asyncio.Event()

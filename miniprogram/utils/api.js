@@ -238,6 +238,21 @@ function getShares() {
   return request({ url: '/shares', method: 'GET' })
 }
 
+function acceptShare(shareToken) {
+  return request({
+    url: '/shares/accept',
+    method: 'POST',
+    data: { share_token: shareToken }
+  })
+}
+
+function revokeShare(shareId) {
+  return request({
+    url: `/shares/${encodeURIComponent(shareId)}`,
+    method: 'DELETE'
+  })
+}
+
 function otaCheck(deviceId) {
   return request({
     url: `/devices/${encodeURIComponent(deviceId)}/ota/check`,
@@ -305,6 +320,8 @@ module.exports = {
   deleteSchedule,
   postShare,
   getShares,
+  acceptShare,
+  revokeShare,
   otaCheck,
   otaStart,
   getOtaProgress,

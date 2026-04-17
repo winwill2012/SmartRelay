@@ -24,6 +24,24 @@ config SR_FW_VERSION
     help
         Runtime reported firmware version string.
 
+choice SR_RELAY_TRIGGER_LEVEL
+    prompt "Relay trigger level"
+    default SR_RELAY_ACTIVE_LOW
+    help
+        Select relay module active level.
+
+config SR_RELAY_ACTIVE_LOW
+    bool "Active low (LOW=ON)"
+    help
+        Typical for many relay boards with low-level trigger jumper.
+
+config SR_RELAY_ACTIVE_HIGH
+    bool "Active high (HIGH=ON)"
+    help
+        Use this for relay boards configured as high-level trigger.
+
+endchoice
+
 config SR_MQTT_HOST
     string "MQTT host"
     default "127.0.0.1"
@@ -48,5 +66,12 @@ config SR_MQTT_PASS
     default "change_me"
     help
         MQTT authentication password.
+
+config SR_VERBOSE_MQTT_RX_LOG
+    bool "Verbose MQTT RX logs (debug only)"
+    default n
+    help
+        Print per-message MQTT enqueue/dequeue and payload logs.
+        Keep disabled for stress tests to avoid UART bottleneck.
 
 endmenu

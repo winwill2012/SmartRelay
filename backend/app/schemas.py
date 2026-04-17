@@ -45,6 +45,7 @@ class ClaimBody(BaseModel):
 class ShareBody(BaseModel):
     target_user_openid: Optional[str] = None
     phone: Optional[str] = None
+    expires_hours: Optional[int] = Field(default=72, ge=1, le=720)
 
 
 class ScheduleCreateBody(BaseModel):

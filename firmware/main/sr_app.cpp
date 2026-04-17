@@ -71,7 +71,17 @@ typedef struct {
   char payload[1024];
 } sr_mqtt_rx_msg_t;
 
+// 避免在高频路径反复分配 1KB+ 栈对象导致偶发栈溢出。
+static sr_mqtt_rx_msg_t s_mqtt_rx_work_msg = {};
+static sr_mqtt_rx_msg_t s_mqtt_rx_drop_msg = {};
+
 static int64_t now_ms(void) { return esp_timer_get_time() / 1000; }
+
+#if CONFIG_SR_VERBOSE_MQTT_RX_LOG
+#define SR_MQTT_RX_LOGI(...) SR_DEV_LOGI(__VA_ARGS__)
+#else
+#define SR_MQTT_RX_LOGI(...) ((void)0)
+#endif
 
 static void log_prov(uint32_t seq, const char *stage, const char *detail) {
 #if CONFIG_SR_LOG_PROFILE_PROD
@@ -447,10 +457,10 @@ extern "C" void sr_app_ble_rx(const uint8_t *d, size_t len) {
 }
 
 static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload, size_t payload_len) {
-  SR_DEV_LOGI("mqtt rx topic=%.*s payload_len=%u", (int)topic_len, topic, (unsigned)payload_len);
+  SR_MQTT_RX_LOGI("mqtt rx topic=%.*s payload_len=%u", (int)topic_len, topic, (unsigned)payload_len);
   if (payload_len > 0) {
     int show = payload_len > 256 ? 256 : (int)payload_len;
-    SR_DEV_LOGI("mqtt rx payload=%.*s%s", show, payload, payload_len > 256 ? "...(truncated)" : "");
+    SR_MQTT_RX_LOGI("mqtt rx payload=%.*s%s", show, payload, payload_len > 256 ? "...(truncated)" : "");
   }
   std::string pl(payload, payload + payload_len);
   cJSON *root = cJSON_Parse(pl.c_str());
@@ -476,7 +486,7 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
   }
 
   if (!strcmp(tp, "ping")) {
-    SR_DEV_LOGI("mqtt cmd ping cmd_id=%s", cmd_id);
+    SR_MQTT_RX_LOGI("mqtt cmd ping cmd_id=%s", cmd_id);
     publish_ack_ok(cmd_id, cJSON_CreateObject());
     cJSON_Delete(root);
     return;
@@ -485,7 +495,7 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
   if (!strcmp(tp, "relay.set")) {
     cJSON *on = pay ? cJSON_GetObjectItem(pay, "on") : nullptr;
     bool v = cJSON_IsBool(on) ? cJSON_IsTrue(on) : false;
-    SR_DEV_LOGI("mqtt cmd relay.set cmd_id=%s target=%d", cmd_id, v ? 1 : 0);
+    SR_MQTT_RX_LOGI("mqtt cmd relay.set cmd_id=%s target=%d", cmd_id, v ? 1 : 0);
     sr_relay_set(v);
     cJSON *ap = cJSON_CreateObject();
     cJSON_AddBoolToObject(ap, "relay_on", sr_relay_get());
@@ -496,7 +506,7 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
   }
 
   if (!strcmp(tp, "relay.toggle")) {
-    SR_DEV_LOGI("mqtt cmd relay.toggle cmd_id=%s", cmd_id);
+    SR_MQTT_RX_LOGI("mqtt cmd relay.toggle cmd_id=%s", cmd_id);
     sr_relay_set(!sr_relay_get());
     cJSON *ap = cJSON_CreateObject();
     cJSON_AddBoolToObject(ap, "relay_on", sr_relay_get());
@@ -507,7 +517,7 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
   }
 
   if (!strcmp(tp, "ota.start")) {
-    SR_DEV_LOGI("mqtt cmd ota.start cmd_id=%s", cmd_id);
+    SR_MQTT_RX_LOGI("mqtt cmd ota.start cmd_id=%s", cmd_id);
     const char *url = "";
     const char *md5e = "";
     size_t sz = 0;
@@ -555,7 +565,7 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
   }
 
   if (!strcmp(tp, "schedule.sync")) {
-    SR_DEV_LOGI("mqtt cmd schedule.sync cmd_id=%s", cmd_id);
+    SR_MQTT_RX_LOGI("mqtt cmd schedule.sync cmd_id=%s", cmd_id);
     int64_t rev = 0;
     cJSON *sch = nullptr;
     if (pay && cJSON_IsObject(pay)) {
@@ -584,23 +594,25 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
 
 static void mqtt_wrap_cb(const char *topic, size_t topic_len, const char *payload, size_t payload_len) {
   if (!s_mqtt_rx_q || !topic || !payload) return;
-  sr_mqtt_rx_msg_t m = {};
-  m.topic_len = topic_len < (sizeof(m.topic) - 1) ? topic_len : (sizeof(m.topic) - 1);
-  m.payload_len = payload_len < (sizeof(m.payload) - 1) ? payload_len : (sizeof(m.payload) - 1);
-  memcpy(m.topic, topic, m.topic_len);
-  m.topic[m.topic_len] = '\0';
-  memcpy(m.payload, payload, m.payload_len);
-  m.payload[m.payload_len] = '\0';
+  s_mqtt_rx_work_msg.topic_len =
+      topic_len < (sizeof(s_mqtt_rx_work_msg.topic) - 1) ? topic_len : (sizeof(s_mqtt_rx_work_msg.topic) - 1);
+  s_mqtt_rx_work_msg.payload_len = payload_len < (sizeof(s_mqtt_rx_work_msg.payload) - 1)
+                                       ? payload_len
+                                       : (sizeof(s_mqtt_rx_work_msg.payload) - 1);
+  memcpy(s_mqtt_rx_work_msg.topic, topic, s_mqtt_rx_work_msg.topic_len);
+  s_mqtt_rx_work_msg.topic[s_mqtt_rx_work_msg.topic_len] = '\0';
+  memcpy(s_mqtt_rx_work_msg.payload, payload, s_mqtt_rx_work_msg.payload_len);
+  s_mqtt_rx_work_msg.payload[s_mqtt_rx_work_msg.payload_len] = '\0';
 
   // MQTT 事件回调线程只做轻量入队，避免在回调里执行重逻辑导致后续指令收不到。
-  if (xQueueSend(s_mqtt_rx_q, &m, 0) != pdTRUE) {
-    ESP_LOGW(TAG, "mqtt rx queue full, drop oldest topic=%.*s", (int)m.topic_len, m.topic);
-    sr_mqtt_rx_msg_t drop = {};
-    (void)xQueueReceive(s_mqtt_rx_q, &drop, 0);
-    (void)xQueueSend(s_mqtt_rx_q, &m, 0);
+  if (xQueueSend(s_mqtt_rx_q, &s_mqtt_rx_work_msg, 0) != pdTRUE) {
+    ESP_LOGW(TAG, "mqtt rx queue full, drop oldest topic=%.*s", (int)s_mqtt_rx_work_msg.topic_len,
+             s_mqtt_rx_work_msg.topic);
+    (void)xQueueReceive(s_mqtt_rx_q, &s_mqtt_rx_drop_msg, 0);
+    (void)xQueueSend(s_mqtt_rx_q, &s_mqtt_rx_work_msg, 0);
   } else {
-    SR_DEV_LOGI("mqtt enqueued topic=%.*s q_count=%u", (int)m.topic_len, m.topic,
-                (unsigned)uxQueueMessagesWaiting(s_mqtt_rx_q));
+    SR_MQTT_RX_LOGI("mqtt enqueued topic=%.*s q_count=%u", (int)s_mqtt_rx_work_msg.topic_len,
+                    s_mqtt_rx_work_msg.topic, (unsigned)uxQueueMessagesWaiting(s_mqtt_rx_q));
   }
 }
 
@@ -703,12 +715,13 @@ void sr_app_main(void) {
     esp_task_wdt_reset();
 
     if (s_mqtt_rx_q) {
-      sr_mqtt_rx_msg_t m = {};
       // 每个循环最多消费 6 条，避免日志/OTA 场景下一次性吃太久。
       for (int i = 0; i < 6; i++) {
-        if (xQueueReceive(s_mqtt_rx_q, &m, 0) != pdTRUE) break;
-        SR_DEV_LOGI("mqtt dequeue topic=%s remaining=%u", m.topic, (unsigned)uxQueueMessagesWaiting(s_mqtt_rx_q));
-        on_mqtt_msg(m.topic, m.topic_len, m.payload, m.payload_len);
+        if (xQueueReceive(s_mqtt_rx_q, &s_mqtt_rx_work_msg, 0) != pdTRUE) break;
+        SR_MQTT_RX_LOGI("mqtt dequeue topic=%s remaining=%u", s_mqtt_rx_work_msg.topic,
+                        (unsigned)uxQueueMessagesWaiting(s_mqtt_rx_q));
+        on_mqtt_msg(s_mqtt_rx_work_msg.topic, s_mqtt_rx_work_msg.topic_len, s_mqtt_rx_work_msg.payload,
+                    s_mqtt_rx_work_msg.payload_len);
       }
     }
 

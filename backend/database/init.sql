@@ -99,6 +99,26 @@ CREATE TABLE IF NOT EXISTS firmware_versions (
   UNIQUE KEY uk_fw_version (version)
 );
 
+CREATE TABLE IF NOT EXISTS device_share_tokens (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  owner_user_id BIGINT NOT NULL,
+  target_user_id BIGINT NULL,
+  device_id BIGINT NOT NULL,
+  share_token VARCHAR(128) NOT NULL,
+  status ENUM('pending','accepted','revoked','expired') NOT NULL DEFAULT 'pending',
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  expires_at DATETIME(3) NULL,
+  accepted_at DATETIME(3) NULL,
+  revoked_at DATETIME(3) NULL,
+  UNIQUE KEY uk_share_token (share_token),
+  INDEX idx_share_owner_time (owner_user_id, created_at),
+  INDEX idx_share_target_time (target_user_id, created_at),
+  INDEX idx_share_token_status (share_token, status),
+  FOREIGN KEY (owner_user_id) REFERENCES users(id),
+  FOREIGN KEY (target_user_id) REFERENCES users(id),
+  FOREIGN KEY (device_id) REFERENCES devices(id)
+);
+
 -- 历史迁移合并：确保旧库补齐 relay_on 字段（兼容不支持 ADD COLUMN IF NOT EXISTS 的版本）
 SET @relay_on_col_count := (
   SELECT COUNT(*)

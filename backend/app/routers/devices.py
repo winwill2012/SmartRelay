@@ -274,7 +274,13 @@ async def unbind_device(
         await session.commit()
         return ok({"device_id": dev.device_id, "action": "unbind_owner"})
 
-    # 被分享者结束分享：移除 shared 绑定
+    # 被分享者结束分享：移除 shared 绑定，并删除分享令牌记录（分享管理两侧列表同步消失）
+    await session.execute(
+        delete(DeviceShareToken).where(
+            DeviceShareToken.device_id == dev.id,
+            DeviceShareToken.target_user_id == user_id,
+        )
+    )
     await session.execute(delete(UserDevice).where(UserDevice.id == ud.id))
     await session.commit()
     return ok({"device_id": dev.device_id, "action": "leave_share"})

@@ -95,3 +95,35 @@ async def ensure_user_notifications_table(session: AsyncSession) -> None:
     except OperationalError:
         await session.rollback()
         raise
+
+
+async def ensure_device_share_tokens_table(session: AsyncSession) -> None:
+    """设备分享令牌表：用于微信好友接受分享流程。"""
+    try:
+        await session.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS device_share_tokens (
+                  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                  owner_user_id BIGINT NOT NULL,
+                  target_user_id BIGINT NULL,
+                  device_id BIGINT NOT NULL,
+                  share_token VARCHAR(128) NOT NULL,
+                  status ENUM('pending','accepted','revoked','expired') NOT NULL DEFAULT 'pending',
+                  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+                  expires_at DATETIME(3) NULL,
+                  accepted_at DATETIME(3) NULL,
+                  revoked_at DATETIME(3) NULL,
+                  UNIQUE KEY uk_share_token (share_token),
+                  INDEX idx_share_owner_time (owner_user_id, created_at),
+                  INDEX idx_share_target_time (target_user_id, created_at),
+                  INDEX idx_share_token_status (share_token, status)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """
+            )
+        )
+        await session.commit()
+        logger.info("db migration: ensured device_share_tokens table")
+    except OperationalError:
+        await session.rollback()
+        raise

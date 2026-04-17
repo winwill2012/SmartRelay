@@ -8,6 +8,13 @@
   padding: 48rpx 0;
 }
 
+.group-title {
+  font-size: 24rpx;
+  color: #475569;
+  font-weight: 600;
+  margin: 8rpx 0 16rpx;
+}
+
 .card.item {
   padding: 28rpx;
   margin-bottom: 20rpx;

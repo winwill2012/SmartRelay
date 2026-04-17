@@ -14,6 +14,10 @@ static bool s_ip_got;
 static esp_netif_t *s_sta_netif;
 /** 配网会话：影响 sta配置项与 sr_wifi_begin 是否强制 MIN_MODEM */
 static bool s_prov_session;
+/** Wi-Fi 状态采样缓存，避免主循环高频调用 esp_wifi_sta_get_ap_info 导致底层压力过大。 */
+static int s_cached_wifi_status = 6;
+static int s_cached_wifi_rssi = 0;
+static int64_t s_last_wifi_sample_ms = 0;
 
 static const char *reason_hint(uint8_t reason) {
   switch (reason) {
@@ -236,13 +240,20 @@ void sr_wifi_heal_tick(bool prov_running, bool prov_pending, int *heal_attempt,
                        bool ble_active, void (*on_mqtt_disconnect)(void)) {
   if (prov_running || prov_pending) return;
 
-  wifi_ap_record_t ap = {};
-  int st = esp_wifi_sta_get_ap_info(&ap);
-  int status = (st == ESP_OK) ? 3 : (s_ip_got ? 3 : 6);
-
   int64_t ms = esp_timer_get_time() / 1000;
+  // 限频到 1Hz 采样，避免 2ms 主循环高频触发 Wi-Fi 驱动查询。
+  if ((ms - s_last_wifi_sample_ms) >= 1000 || s_last_wifi_sample_ms == 0) {
+    wifi_ap_record_t ap = {};
+    int st_now = esp_wifi_sta_get_ap_info(&ap);
+    s_cached_wifi_status = (st_now == ESP_OK) ? 3 : (s_ip_got ? 3 : 6);
+    s_cached_wifi_rssi = (st_now == ESP_OK) ? ap.rssi : 0;
+    s_last_wifi_sample_ms = ms;
+  }
+  int st = (s_cached_wifi_status == 3) ? ESP_OK : ESP_ERR_WIFI_NOT_CONNECT;
+  int status = s_cached_wifi_status;
+
   if (status != *last_status || (ms - *last_state_log_ms) >= 10000) {
-    ESP_LOGI(TAG, "state=%d rssi=%d ip=%d", status, sr_wifi_sta_rssi(), s_ip_got ? 1 : 0);
+    ESP_LOGI(TAG, "state=%d rssi=%d ip=%d", status, s_cached_wifi_rssi, s_ip_got ? 1 : 0);
     *last_status = status;
     *last_state_log_ms = ms;
   }

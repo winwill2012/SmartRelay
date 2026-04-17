@@ -49,6 +49,13 @@ class LogSource(str, enum.Enum):
     system = "system"
 
 
+class ShareStatus(str, enum.Enum):
+    pending = "pending"
+    accepted = "accepted"
+    revoked = "revoked"
+    expired = "expired"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -186,3 +193,28 @@ class FirmwareVersion(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
 
     __table_args__ = (UniqueConstraint("version", name="uk_fw_version"),)
+
+
+class DeviceShareToken(Base):
+    __tablename__ = "device_share_tokens"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    owner_user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    target_user_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
+    device_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("devices.id"), nullable=False)
+    share_token: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    status: Mapped[ShareStatus] = mapped_column(
+        Enum(ShareStatus, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=ShareStatus.pending,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=False), nullable=True)
+    accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=False), nullable=True)
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=False), nullable=True)
+
+    __table_args__ = (
+        Index("idx_share_owner_time", "owner_user_id", "created_at"),
+        Index("idx_share_target_time", "target_user_id", "created_at"),
+        Index("idx_share_token_status", "share_token", "status"),
+    )
