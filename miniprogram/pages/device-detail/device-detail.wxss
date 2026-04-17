@@ -206,6 +206,10 @@
   border: none;
 }
 
+.share-btn-hover {
+  opacity: 0.92;
+}
+
 .btn-unbind {
   margin-top: 48rpx;
   width: 100%;

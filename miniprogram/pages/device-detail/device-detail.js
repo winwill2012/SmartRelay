@@ -135,18 +135,17 @@ Page({
     if (!d.device_id) return ''
     if (d.role !== 'owner') return ''
     if (!forceRefresh && this.data.sharePath) return this.data.sharePath
+
+    let sharePath = ''
     wx.showLoading({ title: '生成邀请中…', mask: true })
     try {
       const res = await api.postShare(d.device_id, { expires_hours: 72 })
-      const p = (res && res.share_path) || ''
-      if (!p) {
+      sharePath = (res && res.share_path) || ''
+      if (!sharePath) {
         this.setData({ sharePath: '', shareReady: false })
         wx.showToast({ title: '分享服务未就绪，请升级后端', icon: 'none' })
         return ''
       }
-      this.setData({ sharePath: p, shareReady: true })
-      wx.showToast({ title: '请再点一次发送至微信好友', icon: 'none' })
-      return p
     } catch (e) {
       this.setData({ shareReady: false })
       wx.showToast({ title: e.message || '生成分享链接失败', icon: 'none' })
@@ -154,6 +153,11 @@ Page({
     } finally {
       wx.hideLoading()
     }
+
+    // 遮罩关闭、Toast 抢占焦点时，首点「分享给微信好友」常被吞掉；稍后再切换 open-type 按钮，保证第一次点就能拉起分享
+    await new Promise((r) => setTimeout(r, 180))
+    this.setData({ sharePath, shareReady: true })
+    return sharePath
   },
 
   onShareAppMessage() {
