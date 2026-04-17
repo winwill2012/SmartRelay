@@ -21,7 +21,14 @@ const dlgLoading = ref(false)
 const dlgErr = ref('')
 const dlgUserLabel = ref('')
 const dlgDevices = ref<
-  { device_id: string; remark?: string; online?: boolean; bound_at?: string | null }[]
+  {
+    device_id: string
+    remark?: string
+    display_name?: string
+    role?: string
+    online?: boolean
+    bound_at?: string | null
+  }[]
 >([])
 const dlgRef = ref<HTMLDialogElement | null>(null)
 const copiedDeviceId = ref<string | null>(null)
@@ -152,6 +159,8 @@ async function openDevices(row: Record<string, unknown>) {
       devices?: {
         device_id: string
         remark?: string
+        display_name?: string
+        role?: string
         online?: boolean
         bound_at?: string | null
       }[]
@@ -352,7 +361,15 @@ onMounted(() => {
           class="flex justify-between gap-3 border border-slate-100 rounded-lg px-3 py-2.5"
         >
           <div class="min-w-0 space-y-1">
-            <p class="font-medium text-slate-900 truncate">{{ d.remark || '—' }}</p>
+            <div class="flex items-center gap-2 min-w-0">
+              <p class="font-medium text-slate-900 truncate">
+                {{ d.display_name || (d.remark && d.remark.trim()) || d.device_id }}
+              </p>
+              <span
+                v-if="d.role === 'shared'"
+                class="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-800"
+              >分享</span>
+            </div>
             <p class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-slate-500 tabular-nums">
               <span class="text-slate-400 shrink-0">设备 ID</span>
               <span class="min-w-0 break-all font-mono text-slate-700">{{ d.device_id }}</span>

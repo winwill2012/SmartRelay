@@ -277,11 +277,28 @@ async def admin_user_detail(
     )
     pairs = sorted(r2.all(), key=lambda row: row[0].created_at, reverse=True)
     devices = []
+    owner_ud_by_dev: dict[int, UserDevice] = {}
+    if pairs:
+        device_pks = {d.id for _, d in pairs}
+        r_owners = await session.execute(
+            select(UserDevice).where(
+                UserDevice.device_id.in_(device_pks),
+                UserDevice.role == UserDeviceRole.owner,
+            )
+        )
+        for oud in r_owners.scalars().all():
+            owner_ud_by_dev.setdefault(int(oud.device_id), oud)
+
     for ud, d in pairs:
+        remark_self = (ud.remark or "").strip()
+        oud = owner_ud_by_dev.get(int(d.id))
+        owner_rem = (oud.remark or "").strip() if oud else ""
+        display_name = remark_self or owner_rem or d.device_id
         devices.append(
             {
                 "device_id": d.device_id,
                 "remark": ud.remark,
+                "display_name": display_name,
                 "role": ud.role.value,
                 "online": device_is_online(d.last_seen_at),
                 "bound_at": ud.created_at.isoformat() if ud.created_at else None,
