@@ -5,7 +5,7 @@
     <view wx:if="{{joinedList.length > 0}}" class="group-title">我加入的设备</view>
     <view wx:for="{{joinedList}}" wx:key="id" class="card item">
       <text class="t">{{item.device_name || item.device_id || '未知设备'}}</text>
-      <text wx:if="{{item.device_id}}" class="id-text" data-id="{{item.device_id}}" bindtap="copyDeviceId">{{item.device_id}}</text>
+      <text wx:if="{{item.device_id && item.device_name !== item.device_id}}" class="id-text" data-id="{{item.device_id}}" bindtap="copyDeviceId">{{item.device_id}}</text>
       <text class="s">{{item.status_text || '已接受'}}</text>
       <text class="s">来源：{{item.target_display_name || '设备拥有者'}}</text>
       <view class="row-actions">
@@ -16,7 +16,7 @@
     <view wx:if="{{createdList.length > 0}}" class="group-title">我发起的分享</view>
     <view wx:for="{{createdList}}" wx:key="id" class="card item">
       <text class="t">{{item.device_name || item.device_id || '未知设备'}}</text>
-      <text wx:if="{{item.device_id}}" class="id-text" data-id="{{item.device_id}}" bindtap="copyDeviceId">{{item.device_id}}</text>
+      <text wx:if="{{item.device_id && item.device_name !== item.device_id}}" class="id-text" data-id="{{item.device_id}}" bindtap="copyDeviceId">{{item.device_id}}</text>
       <text class="s">{{item.status_text || '待接受'}}</text>
       <text class="s">被分享者：{{item.target_display_name || '待接受'}}</text>
       <view class="row-actions">

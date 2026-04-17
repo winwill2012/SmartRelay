@@ -108,9 +108,24 @@ async def shares(
         .order_by(desc(DeviceShareToken.id))
         .limit(200)
     )
+    rows = r.all()
+    device_pk_set = {int(dev.id) for _, dev, _ in rows}
+    name_by_device_pk: dict[int, str] = {}
+    if device_pk_set:
+        r_name = await session.execute(
+            select(UserDevice).where(
+                UserDevice.user_id == user_id,
+                UserDevice.device_id.in_(device_pk_set),
+            )
+        )
+        for ud in r_name.scalars().all():
+            nm = (ud.remark or "").strip()
+            if nm:
+                name_by_device_pk[int(ud.device_id)] = nm
+
     items = []
     owner_dedupe: dict[tuple[str, int], dict] = {}
-    for st, dev, target_user in r.all():
+    for st, dev, target_user in rows:
         status = st.status.value
         if status == ShareStatus.pending.value and st.expires_at and st.expires_at < now:
             status = ShareStatus.expired.value
@@ -122,7 +137,7 @@ async def shares(
         item = {
             "id": st.id,
             "device_id": dev.device_id,
-            "device_name": dev.device_id,
+            "device_name": name_by_device_pk.get(int(dev.id)) or dev.device_id,
             "role": role,
             "status": status,
             "status_text": STATUS_TEXT.get(status, status),
