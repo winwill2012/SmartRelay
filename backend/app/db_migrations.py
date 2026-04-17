@@ -127,3 +127,19 @@ async def ensure_device_share_tokens_table(session: AsyncSession) -> None:
     except OperationalError:
         await session.rollback()
         raise
+
+
+async def delete_orphan_pending_share_tokens(session: AsyncSession) -> None:
+    """删除历史上「仅预创建、无被分享者」的 pending 记录；新逻辑下邀请为签名令牌，不再产生此类行。"""
+    try:
+        await session.execute(
+            text(
+                "DELETE FROM device_share_tokens "
+                "WHERE status = 'pending' AND target_user_id IS NULL"
+            )
+        )
+        await session.commit()
+        logger.info("db migration: cleaned orphan pending share tokens (if any)")
+    except OperationalError:
+        await session.rollback()
+        raise

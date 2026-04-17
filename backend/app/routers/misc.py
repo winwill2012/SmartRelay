@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 
 from fastapi import APIRouter, Body, Depends
@@ -6,11 +7,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.config import get_settings
 from app.db import get_session
 from app.deps import get_current_user_id
 from app.errors import CONFLICT, FORBIDDEN, NOT_FOUND, PARAM_ERROR
 from app.models import Device, DeviceShareToken, ShareStatus, User, UserDevice, UserDeviceRole, UserNotification
 from app.response import err, ok
+from app.share_link import stateless_token_storage_key, verify_stateless_share_token
 
 router = APIRouter()
 
@@ -205,75 +208,168 @@ async def accept_share(
     if not token:
         return err(PARAM_ERROR, "缺少分享令牌")
 
+    settings = get_settings()
+    now = datetime.now()
+    commit_lookup_token = token
+
     r = await session.execute(
         select(DeviceShareToken, Device).join(Device, Device.id == DeviceShareToken.device_id).where(
             DeviceShareToken.share_token == token
         )
     )
     row = r.first()
-    if not row:
-        return err(NOT_FOUND, "分享链接不存在或已失效")
-    st, dev = row
-    now = datetime.now()
+    if row:
+        st, dev = row
+        if st.owner_user_id == user_id:
+            return err(FORBIDDEN, "不能接受自己分享的设备")
 
-    if st.owner_user_id == user_id:
+        status = st.status.value
+        if status == ShareStatus.revoked.value:
+            return err(FORBIDDEN, "分享已取消")
+        if status == ShareStatus.expired.value:
+            return err(FORBIDDEN, "分享已过期")
+        if st.expires_at and st.expires_at < now:
+            st.status = ShareStatus.expired
+            await session.commit()
+            return err(FORBIDDEN, "分享已过期")
+
+        if st.status == ShareStatus.accepted and st.target_user_id == user_id:
+            return ok({"device_id": dev.device_id, "already_accepted": True})
+        if st.status == ShareStatus.accepted and st.target_user_id and st.target_user_id != user_id:
+            return err(FORBIDDEN, "该分享已被其他用户接受")
+
+        r_ud = await session.execute(
+            select(UserDevice).where(UserDevice.user_id == user_id, UserDevice.device_id == dev.id)
+        )
+        ud = r_ud.scalar_one_or_none()
+        if not ud:
+            session.add(
+                UserDevice(
+                    user_id=user_id,
+                    device_id=dev.id,
+                    remark="",
+                    role=UserDeviceRole.shared,
+                    created_at=now,
+                )
+            )
+        st.target_user_id = user_id
+        st.status = ShareStatus.accepted
+        st.accepted_at = now
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            r2 = await session.execute(
+                select(DeviceShareToken, Device)
+                .join(Device, Device.id == DeviceShareToken.device_id)
+                .where(DeviceShareToken.share_token == commit_lookup_token)
+            )
+            row2 = r2.first()
+            if not row2:
+                return err(NOT_FOUND, "分享链接不存在或已失效")
+            st2, dev2 = row2
+            if st2.status == ShareStatus.accepted and st2.target_user_id == user_id:
+                return ok({"device_id": dev2.device_id, "already_accepted": True})
+            r_ud2 = await session.execute(
+                select(UserDevice).where(UserDevice.user_id == user_id, UserDevice.device_id == dev2.id)
+            )
+            if r_ud2.scalar_one_or_none():
+                if st2.status == ShareStatus.accepted:
+                    return ok({"device_id": dev2.device_id, "already_accepted": True})
+                return ok({"device_id": dev2.device_id, "accepted": True})
+            return err(CONFLICT, "接受分享失败，请稍后重试")
+        return ok({"device_id": dev.device_id, "accepted": True})
+
+    # —— 无库表记录：签名邀请 v1.…（生成邀请时不写库）——
+    pl = verify_stateless_share_token(token, settings.jwt_secret)
+    if not pl:
+        return err(NOT_FOUND, "分享链接不存在或已失效")
+    if int(time.time()) > int(pl["e"]):
+        return err(FORBIDDEN, "分享已过期")
+
+    owner_uid = int(pl["o"])
+    dev_pk = int(pl["d"])
+    if owner_uid == user_id:
         return err(FORBIDDEN, "不能接受自己分享的设备")
 
-    status = st.status.value
-    if status == ShareStatus.revoked.value:
-        return err(FORBIDDEN, "分享已取消")
-    if status == ShareStatus.expired.value:
-        return err(FORBIDDEN, "分享已过期")
-    if st.expires_at and st.expires_at < now:
-        st.status = ShareStatus.expired
-        await session.commit()
-        return err(FORBIDDEN, "分享已过期")
+    r_dev = await session.execute(select(Device).where(Device.id == dev_pk))
+    dev = r_dev.scalar_one_or_none()
+    if not dev:
+        return err(NOT_FOUND, "分享链接不存在或已失效")
 
-    if st.status == ShareStatus.accepted and st.target_user_id == user_id:
-        return ok({"device_id": dev.device_id, "already_accepted": True})
-    if st.status == ShareStatus.accepted and st.target_user_id and st.target_user_id != user_id:
-        return err(FORBIDDEN, "该分享已被其他用户接受")
+    r_own = await session.execute(
+        select(UserDevice).where(
+            UserDevice.user_id == owner_uid,
+            UserDevice.device_id == dev.id,
+            UserDevice.role == UserDeviceRole.owner,
+        )
+    )
+    if not r_own.scalar_one_or_none():
+        return err(FORBIDDEN, "分享无效")
+
+    tkey = stateless_token_storage_key(token)
+    commit_lookup_token = tkey
+
+    r_st = await session.execute(select(DeviceShareToken).where(DeviceShareToken.share_token == tkey))
+    st_ex = r_st.scalar_one_or_none()
+    if st_ex:
+        if st_ex.status == ShareStatus.accepted and st_ex.target_user_id == user_id:
+            return ok({"device_id": dev.device_id, "already_accepted": True})
+        if st_ex.status == ShareStatus.accepted and st_ex.target_user_id and st_ex.target_user_id != user_id:
+            return err(FORBIDDEN, "该分享已被其他用户接受")
+        if st_ex.status in (ShareStatus.revoked, ShareStatus.expired):
+            return err(FORBIDDEN, "分享已失效")
 
     r_ud = await session.execute(
         select(UserDevice).where(UserDevice.user_id == user_id, UserDevice.device_id == dev.id)
     )
     ud = r_ud.scalar_one_or_none()
-    if not ud:
-        session.add(
-            UserDevice(
-                user_id=user_id,
-                device_id=dev.id,
-                remark="",
-                role=UserDeviceRole.shared,
-                created_at=now,
-            )
+    if ud and ud.role == UserDeviceRole.owner:
+        return err(FORBIDDEN, "您已是设备所有者")
+    if ud and ud.role == UserDeviceRole.shared:
+        return ok({"device_id": dev.device_id, "already_accepted": True})
+
+    session.add(
+        UserDevice(
+            user_id=user_id,
+            device_id=dev.id,
+            remark="",
+            role=UserDeviceRole.shared,
+            created_at=now,
         )
-    st.target_user_id = user_id
-    st.status = ShareStatus.accepted
-    st.accepted_at = now
+    )
+    session.add(
+        DeviceShareToken(
+            owner_user_id=owner_uid,
+            target_user_id=user_id,
+            device_id=dev.id,
+            share_token=tkey,
+            status=ShareStatus.accepted,
+            created_at=now,
+            expires_at=None,
+            accepted_at=now,
+            revoked_at=None,
+        )
+    )
     try:
         await session.commit()
     except IntegrityError:
         await session.rollback()
-        # 并发重复提交等导致 user_devices 唯一键冲突时，首次请求往往已成功；幂等返回
         r2 = await session.execute(
             select(DeviceShareToken, Device)
             .join(Device, Device.id == DeviceShareToken.device_id)
-            .where(DeviceShareToken.share_token == token)
+            .where(DeviceShareToken.share_token == tkey)
         )
         row2 = r2.first()
-        if not row2:
-            return err(NOT_FOUND, "分享链接不存在或已失效")
-        st2, dev2 = row2
-        if st2.status == ShareStatus.accepted and st2.target_user_id == user_id:
-            return ok({"device_id": dev2.device_id, "already_accepted": True})
+        if row2:
+            st2, dev2 = row2
+            if st2.status == ShareStatus.accepted and st2.target_user_id == user_id:
+                return ok({"device_id": dev2.device_id, "already_accepted": True})
         r_ud2 = await session.execute(
-            select(UserDevice).where(UserDevice.user_id == user_id, UserDevice.device_id == dev2.id)
+            select(UserDevice).where(UserDevice.user_id == user_id, UserDevice.device_id == dev.id)
         )
         if r_ud2.scalar_one_or_none():
-            if st2.status == ShareStatus.accepted:
-                return ok({"device_id": dev2.device_id, "already_accepted": True})
-            return ok({"device_id": dev2.device_id, "accepted": True})
+            return ok({"device_id": dev.device_id, "already_accepted": True})
         return err(CONFLICT, "接受分享失败，请稍后重试")
     return ok({"device_id": dev.device_id, "accepted": True})
 

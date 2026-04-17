@@ -1,5 +1,4 @@
 import logging
-import secrets
 import time
 from datetime import datetime, time as dt_time, timedelta
 from typing import Any, Optional
@@ -15,6 +14,7 @@ from app.command_service import (
     insert_command_sent,
     new_cmd_id,
 )
+from app.config import get_settings
 from app.db import get_session
 from app.deps import get_current_user_id
 from app.errors import CONFLICT, DEVICE_OFFLINE, FORBIDDEN, NOT_FOUND, PARAM_ERROR
@@ -37,6 +37,7 @@ from app.response import err, ok
 from app.schedule_sync import build_schedules_payload
 from app.schemas import BindBody, CommandBody, PatchDeviceBody, ScheduleCreateBody, ShareBody
 from app.security import verify_password
+from app.share_link import build_stateless_share_token
 from app.utils import device_is_online
 
 logger = logging.getLogger(__name__)
@@ -537,57 +538,20 @@ async def create_share(
     now = datetime.now()
     expires_hours = int(body.expires_hours or 72)
     expires_at = now + timedelta(hours=expires_hours)
-
-    # 同设备未过期待分享令牌复用，避免重复点击导致大量 pending 记录。
-    existing_r = await session.execute(
-        select(DeviceShareToken)
-        .where(
-            DeviceShareToken.owner_user_id == user_id,
-            DeviceShareToken.device_id == dev.id,
-            DeviceShareToken.status == ShareStatus.pending,
-            DeviceShareToken.target_user_id.is_(None),
-        )
-        .order_by(DeviceShareToken.id.desc())
-        .limit(1)
+    exp_unix = int(expires_at.timestamp())
+    settings = get_settings()
+    token = build_stateless_share_token(
+        device_pk=int(dev.id),
+        owner_user_id=int(user_id),
+        exp_unix=exp_unix,
+        secret=settings.jwt_secret,
     )
-    existing = existing_r.scalar_one_or_none()
-    if existing and (not existing.expires_at or existing.expires_at > now):
-        share_entry = f"/pages/shares/shares?share_token={existing.share_token}&device_id={dev.device_id}"
-        share_path = f"/pages/login/login?redirect={quote(share_entry, safe='')}"
-        return ok(
-            {
-                "share_id": existing.id,
-                "share_token": existing.share_token,
-                "share_path": share_path,
-                "device_id": dev.device_id,
-                "device_name": dev.device_id,
-                "expires_at": existing.expires_at.isoformat() if existing.expires_at else None,
-                "status": "pending",
-            }
-        )
-
-    token = secrets.token_urlsafe(24)
-
-    share = DeviceShareToken(
-        owner_user_id=user_id,
-        target_user_id=None,
-        device_id=dev.id,
-        share_token=token,
-        status=ShareStatus.pending,
-        created_at=now,
-        expires_at=expires_at,
-        accepted_at=None,
-        revoked_at=None,
-    )
-    session.add(share)
-    await session.commit()
-    await session.refresh(share)
-
+    # 签名令牌不写库：分享管理不会出现「未发邀请却待接收」；对方接受时再落库。
     share_entry = f"/pages/shares/shares?share_token={token}&device_id={dev.device_id}"
     share_path = f"/pages/login/login?redirect={quote(share_entry, safe='')}"
     return ok(
         {
-            "share_id": share.id,
+            "share_id": None,
             "share_token": token,
             "share_path": share_path,
             "device_id": dev.device_id,

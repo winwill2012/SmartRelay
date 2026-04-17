@@ -77,16 +77,6 @@
 
     <view class="card menu" wx:if="{{device.role === 'owner'}}">
       <button
-        wx:if="{{!shareReady}}"
-        class="share-btn"
-        data-id="{{device.device_id}}"
-        bindtap="onTapPrepareShare"
-      >
-        <text>分享给微信好友</text>
-        <text class="chev">›</text>
-      </button>
-      <button
-        wx:else
         class="share-btn"
         open-type="share"
         data-id="{{device.device_id}}"
