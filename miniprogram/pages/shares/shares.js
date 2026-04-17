@@ -1,5 +1,20 @@
 const api = require('../../utils/api.js')
 
+function formatShareTime(iso) {
+  if (!iso) return '-'
+  const s = String(iso).trim()
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) return s
+  let d = new Date(s)
+  if (Number.isNaN(d.getTime()) && /^\d{4}-\d{2}-\d{2}T/.test(s)) {
+    d = new Date(s.replace(/(\.\d{3})?Z?$/, ''))
+  }
+  if (Number.isNaN(d.getTime())) return s
+  const pad = (n) => (n < 10 ? '0' + n : '' + n)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(
+    d.getMinutes()
+  )}:${pad(d.getSeconds())}`
+}
+
 Page({
   data: {
     loading: true,
@@ -50,12 +65,21 @@ Page({
 
   _formatShareDetail(item) {
     if (!item || typeof item !== 'object') return '暂无详情'
+    const disp =
+      item.device_display_name || item.device_name || item.device_id || '-'
     const lines = [
-      `设备：${item.device_name || item.device_id || '-'}`,
-      `状态：${item.status_text || item.status || item.role || '-'}`,
-      `分享给：${item.target_display_name || item.target_nickname || item.target_phone || item.target_openid || '-'}`,
-      `创建时间：${item.created_at || item.createdAt || '-'}`
+      `设备名称：${disp}`,
+      `设备ID：${item.device_id || '-'}`,
+      `状态：${item.status_text || item.status || item.role || '-'}`
     ]
+    if (item.role === 'owner') {
+      lines.push(
+        `分享给：${item.target_display_name || item.target_nickname || item.target_phone || item.target_openid || '-'}`
+      )
+    } else {
+      lines.push(`来源：${item.owner_display_name || '设备拥有者'}`)
+    }
+    lines.push(`创建时间：${formatShareTime(item.created_at || item.createdAt)}`)
     return lines.join('\n')
   },
 

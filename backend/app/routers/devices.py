@@ -6,7 +6,7 @@ from typing import Any, Optional
 from urllib.parse import quote, urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.command_service import (
@@ -41,6 +41,13 @@ from app.utils import device_is_online
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+_SHARE_STATUS_TEXT = {
+    "pending": "待接受",
+    "accepted": "已接受",
+    "revoked": "已取消",
+    "expired": "已过期",
+}
 
 
 def _sanitize_ota_url(raw: str) -> str:
@@ -589,6 +596,62 @@ async def create_share(
             "status": "pending",
         }
     )
+
+
+@router.get("/devices/{device_id}/shares")
+async def list_device_shares(
+    device_id: str,
+    user_id: int = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    """设备所有者查看本设备分享给了哪些用户（去重：同一被分享者只保留最新一条）。"""
+    pair = await _get_owner_device(session, user_id, device_id)
+    if not pair:
+        return err(FORBIDDEN, "仅设备所有者可查看分享")
+    _, dev = pair
+    now = datetime.now()
+    udr = await session.execute(
+        select(UserDevice).where(UserDevice.user_id == user_id, UserDevice.device_id == dev.id)
+    )
+    ud_row = udr.scalar_one_or_none()
+    owner_remark = ((ud_row.remark or "").strip()) if ud_row else ""
+    device_display_name = owner_remark or dev.device_id
+
+    r = await session.execute(
+        select(DeviceShareToken, User)
+        .outerjoin(User, User.id == DeviceShareToken.target_user_id)
+        .where(DeviceShareToken.device_id == dev.id)
+        .order_by(desc(DeviceShareToken.id))
+        .limit(200)
+    )
+    rows = r.all()
+    dedupe: dict[int, dict[str, Any]] = {}
+    for st, target_user in rows:
+        status = st.status.value
+        if status == ShareStatus.pending.value and st.expires_at and st.expires_at < now:
+            status = ShareStatus.expired.value
+        target_nickname = (target_user.nickname.strip() if target_user and target_user.nickname else "") or None
+        target_display_name = target_nickname or (
+            f"用户{st.target_user_id}" if st.target_user_id else "待接受"
+        )
+        item: dict[str, Any] = {
+            "id": st.id,
+            "device_id": dev.device_id,
+            "device_display_name": device_display_name,
+            "target_user_id": st.target_user_id,
+            "target_display_name": target_display_name,
+            "status": status,
+            "status_text": _SHARE_STATUS_TEXT.get(status, status),
+            "created_at": st.created_at.isoformat() if st.created_at else None,
+            "expires_at": st.expires_at.isoformat() if st.expires_at else None,
+            "accepted_at": st.accepted_at.isoformat() if st.accepted_at else None,
+        }
+        dedupe_key = int(st.target_user_id or 0)
+        old = dedupe.get(dedupe_key)
+        if not old or int(item["id"]) > int(old["id"]):
+            dedupe[dedupe_key] = item
+    final_items = sorted(dedupe.values(), key=lambda x: int(x["id"]), reverse=True)
+    return ok({"items": final_items})
 
 
 @router.post("/devices/{device_id}/ota/check")

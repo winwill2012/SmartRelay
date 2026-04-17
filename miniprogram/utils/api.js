@@ -238,6 +238,13 @@ function getShares() {
   return request({ url: '/shares', method: 'GET' })
 }
 
+function getDeviceShares(deviceId) {
+  return request({
+    url: `/devices/${encodeURIComponent(deviceId)}/shares`,
+    method: 'GET'
+  })
+}
+
 function acceptShare(shareToken) {
   return request({
     url: '/shares/accept',
@@ -320,6 +327,7 @@ module.exports = {
   deleteSchedule,
   postShare,
   getShares,
+  getDeviceShares,
   acceptShare,
   revokeShare,
   otaCheck,

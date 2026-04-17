@@ -1,0 +1,68 @@
+.page {
+  padding: 24rpx 32rpx 80rpx;
+}
+
+.hint {
+  text-align: center;
+  color: #64748b;
+  padding: 48rpx 0;
+}
+
+.card.item {
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+}
+
+.t {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #0f172a;
+  display: block;
+}
+
+.sub {
+  display: block;
+  margin-top: 8rpx;
+  color: #94a3b8;
+  font-size: 22rpx;
+  font-family: ui-monospace, monospace;
+}
+
+.s {
+  font-size: 24rpx;
+  color: #64748b;
+  margin-top: 8rpx;
+  display: block;
+}
+
+.row-actions {
+  margin-top: 20rpx;
+  display: flex;
+  gap: 16rpx;
+}
+
+.act {
+  flex: 1;
+  border-radius: 16rpx;
+  line-height: 76rpx;
+  font-size: 26rpx;
+  padding: 0;
+}
+
+.act::after {
+  border: none;
+}
+
+.act-detail {
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  color: #1d4ed8;
+  font-weight: 600;
+  border: 2rpx solid #bfdbfe;
+}
+
+.act-cancel {
+  background: linear-gradient(180deg, #fef2f2 0%, #fee2e2 100%);
+  color: #b91c1c;
+  font-weight: 600;
+  border: 2rpx solid #fecaca;
+}

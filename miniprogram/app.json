@@ -4,6 +4,7 @@
     "pages/mine/mine",
     "pages/login/login",
     "pages/device-detail/device-detail",
+    "pages/device-shares/device-shares",
     "pages/provision/provision",
     "pages/bind/bind",
     "pages/schedules/schedules",

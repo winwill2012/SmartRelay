@@ -58,16 +58,6 @@
           <text class="chev">›</text>
         </view>
       </navigator>
-      <navigator url="/pages/shares/shares" class="menu-row border" hover-class="menu-row--hover">
-        <view class="menu-left">
-          <view class="menu-ico-svg menu-ico-svg--share" />
-          <view class="menu-text-wrap">
-            <text class="menu-title">分享管理</text>
-            <text class="menu-desc">设备共享与权限</text>
-          </view>
-        </view>
-        <text class="chev">›</text>
-      </navigator>
       <navigator url="/pages/privacy-policy/privacy-policy" class="menu-row border" hover-class="menu-row--hover">
         <view class="menu-left">
           <view class="menu-ico-svg menu-ico-svg--privacy" />

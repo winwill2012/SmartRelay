@@ -97,7 +97,7 @@ Page({
     const role = (this.data.device && this.data.device.role) || 'owner'
     const isShared = role !== 'owner'
     wx.showModal({
-      title: isShared ? '结束分享' : '解绑设备',
+      title: isShared ? '结束共享' : '解绑设备',
       content: isShared ? '结束后将不再拥有该设备控制权限，确认吗？' : '解绑后将无法远程控制，确认吗？',
       success: async (res) => {
         if (!res.confirm) return
@@ -105,14 +105,14 @@ Page({
         try {
           await api.unbindDevice(id)
           wx.hideLoading()
-          wx.showToast({ title: isShared ? '已结束分享' : '已解绑', icon: 'success' })
+          wx.showToast({ title: isShared ? '已结束共享' : '已解绑', icon: 'success' })
           setTimeout(() => {
             if (isShared) wx.switchTab({ url: '/pages/devices/devices' })
             else wx.navigateBack()
           }, 400)
         } catch (e) {
           wx.hideLoading()
-          wx.showToast({ title: e.message || (isShared ? '结束分享失败' : '解绑失败'), icon: 'none' })
+          wx.showToast({ title: e.message || (isShared ? '结束共享失败' : '解绑失败'), icon: 'none' })
         }
       }
     })

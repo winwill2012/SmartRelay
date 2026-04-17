@@ -1,8 +1,9 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import desc, or_, select
+from sqlalchemy import desc, or_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.db import get_session
 from app.deps import get_current_user_id
@@ -95,10 +96,13 @@ async def shares(
     session: AsyncSession = Depends(get_session),
 ):
     now = datetime.now()
+    TargetUser = aliased(User)
+    OwnerUser = aliased(User)
     r = await session.execute(
-        select(DeviceShareToken, Device, User)
+        select(DeviceShareToken, Device, TargetUser, OwnerUser)
         .join(Device, Device.id == DeviceShareToken.device_id)
-        .outerjoin(User, User.id == DeviceShareToken.target_user_id)
+        .outerjoin(TargetUser, TargetUser.id == DeviceShareToken.target_user_id)
+        .join(OwnerUser, OwnerUser.id == DeviceShareToken.owner_user_id)
         .where(
             or_(
                 DeviceShareToken.owner_user_id == user_id,
@@ -109,7 +113,7 @@ async def shares(
         .limit(200)
     )
     rows = r.all()
-    device_pk_set = {int(dev.id) for _, dev, _ in rows}
+    device_pk_set = {int(dev.id) for _, dev, _, _ in rows}
     name_by_device_pk: dict[int, str] = {}
     if device_pk_set:
         r_name = await session.execute(
@@ -123,9 +127,22 @@ async def shares(
             if nm:
                 name_by_device_pk[int(ud.device_id)] = nm
 
+    owner_pairs = {(int(st.owner_user_id), int(dev.id)) for st, dev, _, _ in rows}
+    owner_remark_map: dict[tuple[int, int], str] = {}
+    if owner_pairs:
+        r_own = await session.execute(
+            select(UserDevice.user_id, UserDevice.device_id, UserDevice.remark).where(
+                tuple_(UserDevice.user_id, UserDevice.device_id).in_(list(owner_pairs))
+            )
+        )
+        for ouid, did, rem in r_own.all():
+            nm = (rem or "").strip()
+            if nm:
+                owner_remark_map[(int(ouid), int(did))] = nm
+
     items = []
     owner_dedupe: dict[tuple[str, int], dict] = {}
-    for st, dev, target_user in rows:
+    for st, dev, target_user, owner_user in rows:
         status = st.status.value
         if status == ShareStatus.pending.value and st.expires_at and st.expires_at < now:
             status = ShareStatus.expired.value
@@ -134,16 +151,25 @@ async def shares(
         target_display_name = target_nickname or (
             f"用户{st.target_user_id}" if st.target_user_id else "待接受"
         )
+        owner_nickname = (owner_user.nickname.strip() if owner_user and owner_user.nickname else "") or None
+        owner_display_name = owner_nickname or f"用户{st.owner_user_id}"
+        device_display_name = (
+            name_by_device_pk.get(int(dev.id))
+            or owner_remark_map.get((int(st.owner_user_id), int(dev.id)))
+            or dev.device_id
+        )
         item = {
             "id": st.id,
             "device_id": dev.device_id,
-            "device_name": name_by_device_pk.get(int(dev.id)) or dev.device_id,
+            "device_name": device_display_name,
+            "device_display_name": device_display_name,
             "role": role,
             "status": status,
             "status_text": STATUS_TEXT.get(status, status),
             "target_user_id": st.target_user_id,
             "target_nickname": target_nickname,
             "target_display_name": target_display_name,
+            "owner_display_name": owner_display_name,
             "created_at": st.created_at.isoformat() if st.created_at else None,
             "expires_at": st.expires_at.isoformat() if st.expires_at else None,
             "accepted_at": st.accepted_at.isoformat() if st.accepted_at else None,

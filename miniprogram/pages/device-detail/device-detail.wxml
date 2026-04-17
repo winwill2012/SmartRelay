@@ -49,6 +49,15 @@
         <text class="chev">›</text>
       </navigator>
       <navigator
+        wx:if="{{device.role === 'owner'}}"
+        class="menu-row border"
+        url="/pages/device-shares/device-shares?device_id={{device.device_id}}"
+        hover-class="menu-row-hover"
+      >
+        <text>分享管理</text>
+        <text class="chev">›</text>
+      </navigator>
+      <navigator
         class="menu-row border"
         url="/pages/logs/logs?device_id={{device.device_id}}"
         hover-class="menu-row-hover"
@@ -79,6 +88,6 @@
       </button>
     </view>
 
-    <button class="btn-unbind" bindtap="onUnbind">{{device.role === 'owner' ? '解绑设备' : '结束分享'}}</button>
+    <button class="btn-unbind" bindtap="onUnbind">{{device.role === 'owner' ? '解绑设备' : '结束共享'}}</button>
   </block>
 </view>
