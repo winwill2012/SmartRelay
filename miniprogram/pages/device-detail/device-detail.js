@@ -27,7 +27,8 @@ Page({
     loading: true,
     device: {},
     encodedName: '',
-    sharePath: ''
+    sharePath: '',
+    shareReady: false
   },
 
   onLoad(q) {
@@ -50,20 +51,9 @@ Page({
         setTimeout(() => wx.navigateBack(), 500)
         return
       }
-      let sharePath = ''
-      // 后端为签名邀请不写库：预取分享路径不会产生「待接收」记录；单按钮 open-type 分享一次即可
-      if (device.role === 'owner') {
-        try {
-          const res = await api.postShare(device.device_id, { expires_hours: 72 })
-          sharePath = (res && res.share_path) || ''
-        } catch (e) {
-          /* 离线等：进页不拦，用户可稍后下拉刷新 */
-        }
-      }
       this.setData({
         device,
         encodedName: encodeURIComponent(device.name || ''),
-        sharePath,
         loading: false
       })
     } catch (e) {
@@ -136,7 +126,7 @@ Page({
     const d = this.data.device
     const path = this.data.sharePath || '/pages/login/login'
     if (!this.data.sharePath) {
-      wx.showToast({ title: '请下拉刷新页面后再分享', icon: 'none' })
+      wx.showToast({ title: '请先点「分享给微信好友」生成邀请', icon: 'none' })
     }
     return {
       title: `邀请你使用设备：${d.name || '一念开合'}`,
