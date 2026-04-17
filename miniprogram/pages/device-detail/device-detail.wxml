@@ -77,15 +77,19 @@
 
     <view class="card menu" wx:if="{{device.role === 'owner'}}">
       <button
+        wx:if="{{!shareReady}}"
         class="share-btn"
-        open-type="share"
         data-id="{{device.device_id}}"
-        bindtap="onPrepareShare"
-        disabled="{{!shareReady}}"
+        bindtap="onTapPrepareShare"
       >
-        <text>{{shareReady ? '分享给微信好友' : '生成分享链接中…'}}</text>
+        <text>分享给微信好友</text>
         <text class="chev">›</text>
       </button>
+      <button wx:else class="share-btn" open-type="share" data-id="{{device.device_id}}">
+        <text>发送给微信好友</text>
+        <text class="chev">›</text>
+      </button>
+      <text wx:if="{{!shareReady}}" class="share-hint">首次分享请先点上方按钮生成邀请</text>
     </view>
 
     <button class="btn-unbind" bindtap="onUnbind">{{device.role === 'owner' ? '解绑设备' : '结束共享'}}</button>

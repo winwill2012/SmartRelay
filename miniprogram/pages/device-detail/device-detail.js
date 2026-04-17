@@ -54,13 +54,11 @@ Page({
       this.setData({
         device,
         encodedName: encodeURIComponent(device.name || ''),
+        // 不在进入页面时请求 POST /share，否则会无端产生「待接收」令牌；仅在用户点击分享流程时再生成
         shareReady: false,
         sharePath: '',
         loading: false
       })
-      if (device.role === 'owner') {
-        this.ensureSharePath()
-      }
     } catch (e) {
       this.setData({ loading: false })
       wx.showToast({ title: e.message || '加载失败', icon: 'none' })
@@ -127,7 +125,8 @@ Page({
     })
   },
 
-  async onPrepareShare() {
+  /** 第一步：仅生成邀请令牌与路径，不打开微信分享面板（避免未操作就出现「待接收」记录） */
+  async onTapPrepareShare() {
     await this.ensureSharePath(true)
   },
 
@@ -136,6 +135,7 @@ Page({
     if (!d.device_id) return ''
     if (d.role !== 'owner') return ''
     if (!forceRefresh && this.data.sharePath) return this.data.sharePath
+    wx.showLoading({ title: '生成邀请中…', mask: true })
     try {
       const res = await api.postShare(d.device_id, { expires_hours: 72 })
       const p = (res && res.share_path) || ''
@@ -144,12 +144,15 @@ Page({
         wx.showToast({ title: '分享服务未就绪，请升级后端', icon: 'none' })
         return ''
       }
-      this.setData({ sharePath: p, shareReady: !!p })
+      this.setData({ sharePath: p, shareReady: true })
+      wx.showToast({ title: '请再点一次发送至微信好友', icon: 'none' })
       return p
     } catch (e) {
       this.setData({ shareReady: false })
       wx.showToast({ title: e.message || '生成分享链接失败', icon: 'none' })
       return ''
+    } finally {
+      wx.hideLoading()
     }
   },
 
@@ -157,8 +160,7 @@ Page({
     const d = this.data.device
     const path = this.data.sharePath || '/pages/login/login'
     if (!this.data.sharePath) {
-      wx.showToast({ title: '分享链接准备中，请稍后重试', icon: 'none' })
-      this.ensureSharePath(true)
+      wx.showToast({ title: '请先点击「分享给微信好友」生成邀请', icon: 'none' })
     }
     return {
       title: `邀请你使用设备：${d.name || '一念开合'}`,
