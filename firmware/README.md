@@ -33,7 +33,7 @@ idf.py -p COMx flash monitor
 ## 统一配置入口
 
 - MQTT 与版本号统一走 `CONFIG_SR_*`（见 `main/Kconfig.projbuild`）。
-- 继电器触发电平可配置：`idf.py menuconfig -> SmartRelay Runtime Config -> Relay trigger level`
+- 继电器 **GPIO4**，量产默认 **`Active high (HIGH=ON)`**（高电平吸合）；可在 `idf.py menuconfig -> SmartRelay Runtime Config -> Relay trigger level` 改为低电平触发：
   - `Active low (LOW=ON)`：低电平触发模块
   - `Active high (HIGH=ON)`：高电平触发模块
 - 芯片模式支持 `Development / Production`（`idf.py menuconfig -> SmartRelay Runtime Config -> Chip log profile`）。

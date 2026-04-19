@@ -26,7 +26,7 @@ config SR_FW_VERSION
 
 choice SR_RELAY_TRIGGER_LEVEL
     prompt "Relay trigger level"
-    default SR_RELAY_ACTIVE_LOW
+    default SR_RELAY_ACTIVE_HIGH
     help
         Select relay module active level.
 
