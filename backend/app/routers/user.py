@@ -12,6 +12,7 @@ from app.errors import PARAM_ERROR
 from app.models import Schedule, User, UserDevice
 from app.response import err, ok
 from app.schemas import PatchUserBody
+from app.wechat_msg_sec import check_profile_text_safe
 
 router = APIRouter()
 
@@ -107,7 +108,13 @@ async def patch_me(
     user = r.scalar_one()
     if "nickname" in patch:
         raw = patch.get("nickname")
-        user.nickname = (str(raw).strip() or None)[:64] if raw is not None else None
+        new_nick = (str(raw).strip() or None)[:64] if raw is not None else None
+        old_nick = (user.nickname or "").strip() or None
+        if new_nick is not None and new_nick != old_nick:
+            unsafe_msg = await check_profile_text_safe(user.openid, new_nick)
+            if unsafe_msg:
+                return err(PARAM_ERROR, unsafe_msg)
+        user.nickname = new_nick
     if "avatar_url" in patch:
         raw = patch.get("avatar_url")
         user.avatar_url = (str(raw).strip() or None)[:512] if raw is not None else None
