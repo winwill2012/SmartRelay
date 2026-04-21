@@ -54,5 +54,8 @@
       "desc": "用于扫描蓝牙设备、获取周边 Wi-Fi 列表（系统要求）"
     }
   },
+  "requiredPrivateInfos": [
+    "getLocation"
+  ],
   "lazyCodeLoading": "requiredComponents"
 }
