@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { isAxiosError } from 'axios'
-import { adminLogin, apiBase, setAdminToken } from '../api/client'
+import { adminLogin, apiBase, setAdminProfile, setAdminToken } from '../api/client'
 
 const router = useRouter()
 const route = useRoute()
@@ -36,6 +36,9 @@ async function onSubmit(e: Event) {
     const token = (data as { access_token?: string }).access_token
     if (!token) throw new Error('未返回 access_token')
     setAdminToken(token)
+    const adm = (data as { admin?: { username?: string; role?: 'admin' | 'visitor' } }).admin
+    if (adm?.username && adm?.role) setAdminProfile(adm.username, adm.role)
+    else setAdminProfile(username.value, 'admin')
     const redirect = (route.query.redirect as string) || '/dashboard'
     router.push(redirect)
   } catch (e: unknown) {

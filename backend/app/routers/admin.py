@@ -4,7 +4,7 @@ import shutil
 from datetime import date, datetime, time, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from sqlalchemy import exists, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,9 +13,12 @@ from sqlalchemy.orm import selectinload
 from app.admin_dashboard_charts import build_chart_series, resolve_dashboard_window
 from app.config import get_settings
 from app.db import get_session
-from app.deps import get_current_admin_id
+from app.deps import get_current_admin, get_current_admin_id, require_admin_editor
 from app.errors import CONFLICT, NOT_FOUND, PARAM_ERROR, UNAUTHORIZED
 from app.models import (
+    AdminBackendRole,
+    AdminLoginLog,
+    AdminOperationLog,
     AdminUser,
     Device,
     DeviceOperationLog,
@@ -25,33 +28,79 @@ from app.models import (
     UserDeviceRole,
 )
 from app.response import err, ok
-from app.schemas import AdminLoginBody, AdminPasswordBody, FirmwarePatchBody
+from app.schemas import AdminCreateVisitorBody, AdminLoginBody, AdminPasswordBody, FirmwarePatchBody
 from app.security import create_access_token, hash_password, verify_password
 from app.utils import device_is_online
 
 router = APIRouter(prefix="/admin")
 
 
+def _client_ip(request: Request) -> str:
+    xf = request.headers.get("x-forwarded-for") or request.headers.get("X-Forwarded-For")
+    if xf:
+        return xf.split(",")[0].strip()[:45]
+    if request.client and request.client.host:
+        return str(request.client.host)[:45]
+    return ""
+
+
+def _user_agent(request: Request) -> str:
+    return (request.headers.get("user-agent") or "")[:512]
+
+
 @router.post("/auth/login")
-async def admin_login(body: AdminLoginBody, session: AsyncSession = Depends(get_session)):
+async def admin_login(body: AdminLoginBody, request: Request, session: AsyncSession = Depends(get_session)):
+    now = datetime.now()
+    ip = _client_ip(request)
+    ua = _user_agent(request)
     r = await session.execute(select(AdminUser).where(AdminUser.username == body.username))
     admin = r.scalar_one_or_none()
     if not admin or not verify_password(body.password, admin.password_hash):
+        session.add(
+            AdminLoginLog(
+                admin_user_id=None,
+                username_attempt=body.username[:64],
+                ip=ip or None,
+                user_agent=ua or None,
+                success=False,
+                fail_reason="用户名或密码错误",
+                created_at=now,
+            )
+        )
+        await session.commit()
         return err(UNAUTHORIZED, "用户名或密码错误")
     settings = get_settings()
     token = create_access_token(
         str(admin.id),
         token_type="admin",
         expires_minutes=settings.admin_jwt_expire_minutes,
+        extra={"role": admin.role.value},
     )
+    session.add(
+        AdminLoginLog(
+            admin_user_id=admin.id,
+            username_attempt=None,
+            ip=ip or None,
+            user_agent=ua or None,
+            success=True,
+            fail_reason=None,
+            created_at=now,
+        )
+    )
+    await session.commit()
     return ok(
         {
             "access_token": token,
             "admin_access_token": token,
             "expires_in": settings.admin_jwt_expire_minutes * 60,
-            "admin": {"id": admin.id, "username": admin.username},
+            "admin": {"id": admin.id, "username": admin.username, "role": admin.role.value},
         }
     )
+
+
+@router.get("/auth/me")
+async def admin_auth_me(admin: AdminUser = Depends(get_current_admin)):
+    return ok({"id": admin.id, "username": admin.username, "role": admin.role.value})
 
 
 @router.post("/auth/password")
@@ -67,6 +116,127 @@ async def admin_password(
     admin.password_hash = hash_password(body.new_password)
     await session.commit()
     return ok({})
+
+
+@router.get("/system/accounts")
+async def admin_system_accounts_list(
+    _editor: AdminUser = Depends(require_admin_editor),
+    session: AsyncSession = Depends(get_session),
+):
+    r = await session.execute(select(AdminUser).order_by(AdminUser.id.asc()))
+    rows = r.scalars().all()
+    return ok(
+        {
+            "items": [
+                {
+                    "id": x.id,
+                    "username": x.username,
+                    "role": x.role.value,
+                    "created_at": x.created_at.isoformat(),
+                }
+                for x in rows
+            ]
+        }
+    )
+
+
+@router.post("/system/accounts")
+async def admin_system_accounts_create(
+    body: AdminCreateVisitorBody,
+    _editor: AdminUser = Depends(require_admin_editor),
+    session: AsyncSession = Depends(get_session),
+):
+    dupe = await session.execute(select(AdminUser.id).where(AdminUser.username == body.username.strip()))
+    if dupe.scalar_one_or_none() is not None:
+        return err(CONFLICT, "用户名已存在")
+    now = datetime.now()
+    u = AdminUser(
+        username=body.username.strip()[:64],
+        password_hash=hash_password(body.password),
+        role=AdminBackendRole.visitor,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(u)
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        return err(CONFLICT, "创建失败")
+    await session.refresh(u)
+    return ok({"id": u.id, "username": u.username, "role": u.role.value})
+
+
+@router.get("/system/logs/login")
+async def admin_system_logs_login(
+    _a: AdminUser = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_session),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=200),
+):
+    off = (page - 1) * page_size
+    tc = await session.execute(select(func.count()).select_from(AdminLoginLog))
+    total = int(tc.scalar_one() or 0)
+    r = await session.execute(
+        select(AdminLoginLog).order_by(AdminLoginLog.id.desc()).offset(off).limit(page_size)
+    )
+    rows = r.scalars().all()
+    ids = {x.admin_user_id for x in rows if x.admin_user_id}
+    name_map: dict[int, str] = {}
+    if ids:
+        r2 = await session.execute(select(AdminUser.id, AdminUser.username).where(AdminUser.id.in_(ids)))
+        name_map = {int(i): n for i, n in r2.all()}
+    items = []
+    for log in rows:
+        uname = name_map.get(log.admin_user_id) if log.admin_user_id else None
+        items.append(
+            {
+                "id": log.id,
+                "admin_user_id": log.admin_user_id,
+                "username": uname or log.username_attempt,
+                "ip": log.ip,
+                "user_agent": log.user_agent,
+                "success": log.success,
+                "fail_reason": log.fail_reason,
+                "created_at": log.created_at.isoformat(),
+            }
+        )
+    return ok({"items": items, "page": page, "page_size": page_size, "total": total})
+
+
+@router.get("/system/logs/operations")
+async def admin_system_logs_operations(
+    _a: AdminUser = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_session),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=200),
+):
+    off = (page - 1) * page_size
+    tc = await session.execute(select(func.count()).select_from(AdminOperationLog))
+    total = int(tc.scalar_one() or 0)
+    r = await session.execute(
+        select(AdminOperationLog).order_by(AdminOperationLog.id.desc()).offset(off).limit(page_size)
+    )
+    rows = r.scalars().all()
+    ids = {x.admin_user_id for x in rows}
+    name_map: dict[int, str] = {}
+    if ids:
+        r2 = await session.execute(select(AdminUser.id, AdminUser.username).where(AdminUser.id.in_(ids)))
+        name_map = {int(i): n for i, n in r2.all()}
+    items = []
+    for log in rows:
+        items.append(
+            {
+                "id": log.id,
+                "admin_user_id": log.admin_user_id,
+                "username": name_map.get(log.admin_user_id),
+                "method": log.method,
+                "path": log.path,
+                "status_code": log.status_code,
+                "created_at": log.created_at.isoformat(),
+            }
+        )
+    return ok({"items": items, "page": page, "page_size": page_size, "total": total})
 
 
 @router.get("/dashboard/metrics")
@@ -487,7 +657,7 @@ async def admin_firmware_list(
 
 @router.post("/firmware")
 async def admin_firmware_upload(
-    _admin_id: int = Depends(get_current_admin_id),
+    _editor: AdminUser = Depends(require_admin_editor),
     session: AsyncSession = Depends(get_session),
     file: UploadFile = File(...),
     version: str = Form(...),
@@ -535,7 +705,7 @@ async def admin_firmware_upload(
 async def admin_firmware_patch(
     fw_id: int,
     body: FirmwarePatchBody,
-    _admin_id: int = Depends(get_current_admin_id),
+    _editor: AdminUser = Depends(require_admin_editor),
     session: AsyncSession = Depends(get_session),
 ):
     r = await session.execute(select(FirmwareVersion).where(FirmwareVersion.id == fw_id))
@@ -551,7 +721,7 @@ async def admin_firmware_patch(
 @router.delete("/firmware/{fw_id}")
 async def admin_firmware_delete(
     fw_id: int,
-    _admin_id: int = Depends(get_current_admin_id),
+    _editor: AdminUser = Depends(require_admin_editor),
     session: AsyncSession = Depends(get_session),
 ):
     settings = get_settings()

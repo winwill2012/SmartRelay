@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.models import AdminUser
+from app.models import AdminBackendRole, AdminUser
 from app.security import hash_password
 
 logger = logging.getLogger(__name__)
@@ -20,6 +20,7 @@ async def ensure_default_admin(session: AsyncSession) -> None:
     admin = AdminUser(
         username=settings.admin_default_username,
         password_hash=hash_password(settings.admin_default_password),
+        role=AdminBackendRole.admin,
         created_at=now,
         updated_at=now,
     )

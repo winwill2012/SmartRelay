@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { getAdminToken } from '../api/client'
+import { getAdminRole, getAdminToken } from '../api/client'
 
 const LoginView = () => import('../views/LoginView.vue')
 const AdminLayout = () => import('../layouts/AdminLayout.vue')
@@ -10,6 +10,8 @@ const DeviceDetailView = () => import('../views/DeviceDetailView.vue')
 const DeviceLogsView = () => import('../views/DeviceLogsView.vue')
 const FirmwareView = () => import('../views/FirmwareView.vue')
 const AccountPasswordView = () => import('../views/AccountPasswordView.vue')
+const SettingsAccountsView = () => import('../views/SettingsAccountsView.vue')
+const SettingsLogsView = () => import('../views/SettingsLogsView.vue')
 
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,7 +29,18 @@ export const router = createRouter({
         { path: 'devices/:id', name: 'device-detail', component: DeviceDetailView },
         { path: 'devices/:id/logs', name: 'device-logs', component: DeviceLogsView },
         { path: 'firmware', name: 'firmware', component: FirmwareView },
-        { path: 'account/password', name: 'account-password', component: AccountPasswordView }
+        { path: 'account/password', redirect: { name: 'settings-password' } },
+        { path: 'settings/password', name: 'settings-password', component: AccountPasswordView },
+        {
+          path: 'settings/accounts',
+          name: 'settings-accounts',
+          component: SettingsAccountsView,
+          beforeEnter: () => {
+            if (getAdminRole() === 'visitor') return { name: 'dashboard' }
+            return true
+          }
+        },
+        { path: 'settings/logs', name: 'settings-logs', component: SettingsLogsView }
       ]
     }
   ]

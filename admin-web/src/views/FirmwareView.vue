@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { isAxiosError } from 'axios'
-import { getAdminFirmwareList, uploadFirmware, patchFirmware, deleteFirmware } from '../api/client'
+import { getAdminFirmwareList, uploadFirmware, patchFirmware, deleteFirmware, getAdminRole } from '../api/client'
 import { formatAdminDateTime } from '../lib/formatDisplay'
 import {
   parseVersionParts,
@@ -62,6 +62,8 @@ const popLeft = ref(0)
 const popTop = ref(0)
 const popVerKey = ref<string | null>(null)
 const popoverRef = ref<HTMLElement | null>(null)
+
+const isVisitor = computed(() => getAdminRole() === 'visitor')
 
 function onFileChange() {
   const f = fileRef.value?.files?.[0]
@@ -165,6 +167,7 @@ async function submitRelease(e: Event) {
 }
 
 async function removeFirmware(row: FwRow) {
+  if (isVisitor.value) return
   const n = row.device_count ?? 0
   let msg = `确定删除固件版本 v${row.version}？将同时删除服务器上的文件包，不可恢复。`
   if (n > 0) {
@@ -238,6 +241,7 @@ function hideNotes() {
 }
 
 async function onToggleActive(row: FwRow, ev: Event) {
+  if (isVisitor.value) return
   const cb = ev.target as HTMLInputElement
   const newVal = cb.checked
   const oldVal = !!row.is_active
@@ -294,7 +298,15 @@ onUnmounted(() => {
 <template>
   <p v-if="err && !loading" class="text-sm text-red-600 mb-3">{{ err }}</p>
 
+  <p
+    v-if="isVisitor"
+    class="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-4 py-3 mb-4"
+  >
+    当前为访客账号，仅可查看固件列表，不能上传、启用/停用或删除固件。
+  </p>
+
   <section
+    v-if="!isVisitor"
     class="admin-card border-2 border-dashed border-slate-200/90 p-6 mb-6 bg-gradient-to-br from-white to-slate-50/80"
   >
     <h2 class="text-sm font-bold text-slate-900 mb-4">上传新固件</h2>
@@ -359,10 +371,12 @@ onUnmounted(() => {
             <th class="px-4 py-3 font-semibold">访问链接</th>
             <th class="px-4 py-3 font-semibold">
               <span class="block">是否启用</span>
-              <span class="block font-normal text-slate-400 text-[11px] mt-0.5">关闭时设备无法拉取该版本</span>
+              <span v-if="!isVisitor" class="block font-normal text-slate-400 text-[11px] mt-0.5"
+                >关闭时设备无法拉取该版本</span
+              >
             </th>
             <th class="px-4 py-3 font-semibold text-right">设备数量</th>
-            <th class="px-4 py-3 font-semibold text-right w-24">操作</th>
+            <th v-if="!isVisitor" class="px-4 py-3 font-semibold text-right w-24">操作</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
@@ -392,6 +406,7 @@ onUnmounted(() => {
             </td>
             <td class="px-4 py-3">
               <label
+                v-if="!isVisitor"
                 class="inline-flex cursor-pointer items-center gap-2"
                 title="启用后，设备端可接收并更新到该版本"
               >
@@ -410,6 +425,9 @@ onUnmounted(() => {
                 <span class="text-xs text-slate-500 peer-checked:hidden">未启用</span>
                 <span class="hidden text-xs font-medium text-emerald-700 peer-checked:inline">已启用</span>
               </label>
+              <span v-else class="text-xs font-medium" :class="row.is_active ? 'text-emerald-700' : 'text-slate-500'">
+                {{ row.is_active ? '已启用' : '未启用' }}
+              </span>
             </td>
             <td
               class="px-4 py-3 text-right tabular-nums font-semibold"
@@ -417,7 +435,7 @@ onUnmounted(() => {
             >
               {{ row.device_count ?? 0 }}
             </td>
-            <td class="px-4 py-3 text-right">
+            <td v-if="!isVisitor" class="px-4 py-3 text-right">
               <button
                 type="button"
                 class="text-sm font-semibold text-red-600 hover:text-red-700 hover:underline"

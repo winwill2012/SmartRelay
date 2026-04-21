@@ -49,6 +49,11 @@ class LogSource(str, enum.Enum):
     system = "system"
 
 
+class AdminBackendRole(str, enum.Enum):
+    admin = "admin"
+    visitor = "visitor"
+
+
 class ShareStatus(str, enum.Enum):
     pending = "pending"
     accepted = "accepted"
@@ -76,8 +81,37 @@ class AdminUser(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[AdminBackendRole] = mapped_column(
+        Enum(AdminBackendRole, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=AdminBackendRole.admin,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
+
+
+class AdminLoginLog(Base):
+    __tablename__ = "admin_login_logs"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    admin_user_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("admin_users.id"), nullable=True)
+    username_attempt: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    ip: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    fail_reason: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
+
+
+class AdminOperationLog(Base):
+    __tablename__ = "admin_operation_logs"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    admin_user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("admin_users.id"), nullable=False)
+    method: Mapped[str] = mapped_column(String(8), nullable=False)
+    path: Mapped[str] = mapped_column(String(512), nullable=False)
+    status_code: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
 
 
 class Device(Base):

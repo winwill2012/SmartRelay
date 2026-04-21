@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
-import { setAdminToken } from '../api/client'
+import { fetchAdminMe, getAdminRole, getAdminUsername, setAdminProfile, setAdminToken } from '../api/client'
 
 const COLLAPSE_KEY = 'smartrelay-admin-sidebar-collapsed'
 
@@ -10,6 +10,12 @@ const router = useRouter()
 const sidebarOpen = ref(false)
 const collapsed = ref(false)
 const userMenu = ref(false)
+const displayName = ref('admin')
+const settingsOpen = ref(false)
+
+const isAdminRole = computed(() => getAdminRole() === 'admin')
+
+const settingsRouteActive = computed(() => String(route.path).includes('/settings'))
 
 const title = computed(() => {
   const m: Record<string, string> = {
@@ -19,7 +25,9 @@ const title = computed(() => {
     'device-detail': '设备详情',
     'device-logs': '设备日志',
     firmware: '固件管理',
-    'account-password': '账号 · 修改密码'
+    'settings-password': '修改密码',
+    'settings-accounts': '账号管理',
+    'settings-logs': '系统日志'
   }
   return m[String(route.name)] || '一念开合'
 })
@@ -96,8 +104,26 @@ watch(sidebarOpen, (open) => {
   document.body.style.overflow = open && !mqDesktop() ? 'hidden' : ''
 })
 
+watch(
+  () => route.path,
+  (p) => {
+    if (p.includes('/settings')) settingsOpen.value = true
+  },
+  { immediate: true }
+)
+
 onMounted(() => {
   document.body.classList.add('admin-body')
+  displayName.value = getAdminUsername() || 'admin'
+  void (async () => {
+    try {
+      const me = await fetchAdminMe()
+      setAdminProfile(me.username, me.role)
+      displayName.value = me.username
+    } catch {
+      /* 离线或 token 异常时沿用本地缓存 */
+    }
+  })()
   try {
     if (mqDesktop() && localStorage.getItem(COLLAPSE_KEY) === '1') {
       collapsed.value = true
@@ -205,6 +231,57 @@ onUnmounted(() => {
           </svg>
           <span>固件管理</span>
         </RouterLink>
+
+        <div class="admin-sidebar__group">
+          <button
+            type="button"
+            class="admin-sidebar__link admin-sidebar__group-btn"
+            :class="{ 'is-active': settingsRouteActive, 'is-open': settingsOpen }"
+            :aria-expanded="settingsOpen ? 'true' : 'false'"
+            @click="settingsOpen = !settingsOpen"
+          >
+            <svg class="admin-sidebar__ico" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>系统设置</span>
+            <svg class="admin-sidebar__chev" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div v-show="settingsOpen" class="admin-sidebar__sub">
+            <RouterLink
+              to="/settings/password"
+              class="admin-sidebar__sublink"
+              active-class="router-link-active"
+              @click="sidebarOpen = false"
+            >
+              修改密码
+            </RouterLink>
+            <RouterLink
+              v-if="isAdminRole"
+              to="/settings/accounts"
+              class="admin-sidebar__sublink"
+              active-class="router-link-active"
+              @click="sidebarOpen = false"
+            >
+              账号管理
+            </RouterLink>
+            <RouterLink
+              to="/settings/logs"
+              class="admin-sidebar__sublink"
+              active-class="router-link-active"
+              @click="sidebarOpen = false"
+            >
+              系统日志
+            </RouterLink>
+          </div>
+        </div>
       </nav>
     </aside>
 
@@ -231,7 +308,7 @@ onUnmounted(() => {
               @click="toggleUserMenu"
             >
               <span class="admin-user-trigger__dot" aria-hidden="true" />
-              <span class="admin-user-trigger__name">admin</span>
+              <span class="admin-user-trigger__name">{{ displayName }}</span>
               <svg
                 class="admin-user-trigger__chevron"
                 width="16"
@@ -247,10 +324,10 @@ onUnmounted(() => {
             </button>
             <div id="admin-user-dropdown" class="admin-user-panel" role="menu">
               <RouterLink
-                to="/account/password"
+                to="/settings/password"
                 class="admin-user-panel__item"
                 role="menuitem"
-                :aria-current="route.name === 'account-password' ? 'page' : undefined"
+                :aria-current="route.name === 'settings-password' ? 'page' : undefined"
                 @click="closeUserMenu"
               >
                 修改密码

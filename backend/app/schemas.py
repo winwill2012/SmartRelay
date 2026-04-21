@@ -78,5 +78,10 @@ class AdminPasswordBody(BaseModel):
     new_password: str = Field(..., min_length=8)
 
 
+class AdminCreateVisitorBody(BaseModel):
+    username: str = Field(..., min_length=1, max_length=64)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
 class FirmwarePatchBody(BaseModel):
     is_active: Optional[bool] = None

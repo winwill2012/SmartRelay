@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
-from app.errors import UNAUTHORIZED
-from app.models import AdminUser, User
+from app.errors import FORBIDDEN, UNAUTHORIZED
+from app.models import AdminBackendRole, AdminUser, User
 from app.security import try_decode_token
 
 security = HTTPBearer(auto_error=False)
@@ -43,10 +43,10 @@ async def get_current_user_id(
     return uid
 
 
-async def get_current_admin_id(
+async def get_current_admin(
     token: Annotated[Optional[str], Depends(get_bearer_token)],
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> int:
+) -> AdminUser:
     if not token:
         raise HTTPException(status_code=401, detail={"code": UNAUTHORIZED, "message": "未授权"})
     payload = try_decode_token(token)
@@ -56,7 +56,24 @@ async def get_current_admin_id(
         aid = int(payload["sub"])
     except (KeyError, ValueError, TypeError):
         raise HTTPException(status_code=401, detail={"code": UNAUTHORIZED, "message": "未授权"})
-    r = await session.execute(select(AdminUser.id).where(AdminUser.id == aid))
-    if r.scalar_one_or_none() is None:
+    r = await session.execute(select(AdminUser).where(AdminUser.id == aid))
+    admin = r.scalar_one_or_none()
+    if admin is None:
         raise HTTPException(status_code=401, detail={"code": UNAUTHORIZED, "message": "未授权"})
-    return aid
+    return admin
+
+
+async def get_current_admin_id(admin: AdminUser = Depends(get_current_admin)) -> int:
+    return admin.id
+
+
+async def require_admin_editor(
+    admin: AdminUser = Depends(get_current_admin),
+) -> AdminUser:
+    """访客只读；变更类接口依赖此对象。"""
+    if admin.role == AdminBackendRole.visitor:
+        raise HTTPException(
+            status_code=403,
+            detail={"code": FORBIDDEN, "message": "访客账号仅可查看，无法修改数据", "data": None},
+        )
+    return admin

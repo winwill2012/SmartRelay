@@ -129,6 +129,74 @@ async def ensure_device_share_tokens_table(session: AsyncSession) -> None:
         raise
 
 
+async def ensure_admin_users_role_column(session: AsyncSession) -> None:
+    """后台账号角色：管理员 / 访客（只读）。"""
+    try:
+        await session.execute(
+            text(
+                "ALTER TABLE admin_users ADD COLUMN role ENUM('admin','visitor') NOT NULL DEFAULT 'admin' "
+                "AFTER password_hash"
+            )
+        )
+        await session.commit()
+        logger.info("db migration: added admin_users.role")
+    except OperationalError as e:
+        await session.rollback()
+        orig = getattr(e, "orig", None)
+        args = getattr(orig, "args", ()) if orig is not None else ()
+        code = args[0] if args else None
+        msg = str(orig or e)
+        if code == 1060 or "Duplicate column" in msg or "duplicate column" in msg.lower():
+            return
+        raise
+
+
+async def ensure_admin_audit_log_tables(session: AsyncSession) -> None:
+    """后台登录与操作审计表。"""
+    try:
+        await session.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS admin_login_logs (
+                  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                  admin_user_id BIGINT NULL,
+                  username_attempt VARCHAR(64) NULL,
+                  ip VARCHAR(45) NULL,
+                  user_agent VARCHAR(512) NULL,
+                  success TINYINT(1) NOT NULL,
+                  fail_reason VARCHAR(128) NULL,
+                  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+                  INDEX idx_admin_login_time (created_at),
+                  INDEX idx_admin_login_user (admin_user_id, created_at),
+                  CONSTRAINT fk_admin_login_user FOREIGN KEY (admin_user_id) REFERENCES admin_users(id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """
+            )
+        )
+        await session.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS admin_operation_logs (
+                  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                  admin_user_id BIGINT NOT NULL,
+                  method VARCHAR(8) NOT NULL,
+                  path VARCHAR(512) NOT NULL,
+                  status_code SMALLINT NULL,
+                  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+                  INDEX idx_admin_op_time (created_at),
+                  INDEX idx_admin_op_user (admin_user_id, created_at),
+                  CONSTRAINT fk_admin_op_user FOREIGN KEY (admin_user_id) REFERENCES admin_users(id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """
+            )
+        )
+        await session.commit()
+        logger.info("db migration: ensured admin_login_logs / admin_operation_logs")
+    except OperationalError:
+        await session.rollback()
+        raise
+
+
 async def delete_orphan_pending_share_tokens(session: AsyncSession) -> None:
     """删除历史上「仅预创建、无被分享者」的 pending 记录；新逻辑下邀请为签名令牌，不再产生此类行。"""
     try:

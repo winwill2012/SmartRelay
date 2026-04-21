@@ -19,8 +19,35 @@ CREATE TABLE IF NOT EXISTS admin_users (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
+  role ENUM('admin','visitor') NOT NULL DEFAULT 'admin',
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
+);
+
+CREATE TABLE IF NOT EXISTS admin_login_logs (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  admin_user_id BIGINT NULL,
+  username_attempt VARCHAR(64) NULL,
+  ip VARCHAR(45) NULL,
+  user_agent VARCHAR(512) NULL,
+  success TINYINT(1) NOT NULL,
+  fail_reason VARCHAR(128) NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_admin_login_time (created_at),
+  INDEX idx_admin_login_user (admin_user_id, created_at),
+  CONSTRAINT fk_admin_login_user FOREIGN KEY (admin_user_id) REFERENCES admin_users(id)
+);
+
+CREATE TABLE IF NOT EXISTS admin_operation_logs (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  admin_user_id BIGINT NOT NULL,
+  method VARCHAR(8) NOT NULL,
+  path VARCHAR(512) NOT NULL,
+  status_code SMALLINT NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_admin_op_time (created_at),
+  INDEX idx_admin_op_user (admin_user_id, created_at),
+  CONSTRAINT fk_admin_op_user FOREIGN KEY (admin_user_id) REFERENCES admin_users(id)
 );
 
 CREATE TABLE IF NOT EXISTS devices (

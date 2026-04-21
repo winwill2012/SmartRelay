@@ -11,6 +11,10 @@ function resolveApiBase(): string {
 export const apiBase = resolveApiBase()
 
 const TOKEN_KEY = 'sr_admin_token'
+const ROLE_KEY = 'sr_admin_role'
+const USERNAME_KEY = 'sr_admin_username'
+
+export type AdminRole = 'admin' | 'visitor'
 
 export function getAdminToken(): string {
   return localStorage.getItem(TOKEN_KEY) || ''
@@ -18,7 +22,27 @@ export function getAdminToken(): string {
 
 export function setAdminToken(token: string | null): void {
   if (token) localStorage.setItem(TOKEN_KEY, token)
-  else localStorage.removeItem(TOKEN_KEY)
+  else {
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(ROLE_KEY)
+    localStorage.removeItem(USERNAME_KEY)
+  }
+}
+
+export function getAdminRole(): AdminRole {
+  const r = localStorage.getItem(ROLE_KEY)
+  return r === 'visitor' ? 'visitor' : 'admin'
+}
+
+export function setAdminProfile(username: string | null, role: AdminRole | null): void {
+  if (username != null) localStorage.setItem(USERNAME_KEY, username)
+  else localStorage.removeItem(USERNAME_KEY)
+  if (role != null) localStorage.setItem(ROLE_KEY, role)
+  else localStorage.removeItem(ROLE_KEY)
+}
+
+export function getAdminUsername(): string {
+  return localStorage.getItem(USERNAME_KEY) || ''
 }
 
 export interface ApiEnvelope<T> {
@@ -58,6 +82,11 @@ export function createClient(): AxiosInstance {
   c.interceptors.response.use(
     (r) => r,
     async (error: unknown) => {
+      if (isAxiosError(error) && error.response?.status === 403) {
+        const d = error.response?.data as { message?: string } | undefined
+        const msg = d?.message || '无权限执行此操作'
+        if (typeof window !== 'undefined') window.alert(msg)
+      }
       if (!isAxiosError(error) || error.response?.status !== 401) {
         return Promise.reject(error)
       }
@@ -83,10 +112,68 @@ export function createClient(): AxiosInstance {
 export const http = createClient()
 
 export async function adminLogin(username: string, password: string) {
-  const res = await http.post<ApiEnvelope<{ access_token: string; expires_in?: number }>>(
-    '/admin/auth/login',
-    { username, password }
+  const res = await http.post<
+    ApiEnvelope<{
+      access_token: string
+      expires_in?: number
+      admin?: { id: number; username: string; role: AdminRole }
+    }>
+  >('/admin/auth/login', { username, password })
+  return unwrap(res)
+}
+
+export async function fetchAdminMe() {
+  const res = await http.get<ApiEnvelope<{ id: number; username: string; role: AdminRole }>>('/admin/auth/me')
+  return unwrap(res)
+}
+
+export async function listAdminAccounts() {
+  const res = await http.get<ApiEnvelope<{ items: { id: number; username: string; role: string; created_at: string }[] }>>(
+    '/admin/system/accounts'
   )
+  return unwrap(res)
+}
+
+export async function createVisitorAccount(username: string, password: string) {
+  const res = await http.post<ApiEnvelope<{ id: number; username: string; role: string }>>('/admin/system/accounts', {
+    username,
+    password
+  })
+  return unwrap(res)
+}
+
+export type AdminLoginLogRow = {
+  id: number
+  admin_user_id: number | null
+  username: string | null
+  ip: string | null
+  user_agent: string | null
+  success: boolean
+  fail_reason: string | null
+  created_at: string
+}
+
+export type AdminOperationLogRow = {
+  id: number
+  admin_user_id: number
+  username: string | null
+  method: string
+  path: string
+  status_code: number | null
+  created_at: string
+}
+
+export async function getAdminLoginLogs(params?: { page?: number; page_size?: number }) {
+  const res = await http.get<
+    ApiEnvelope<{ items: AdminLoginLogRow[]; total: number; page: number; page_size: number }>
+  >('/admin/system/logs/login', { params })
+  return unwrap(res)
+}
+
+export async function getAdminOperationLogs(params?: { page?: number; page_size?: number }) {
+  const res = await http.get<
+    ApiEnvelope<{ items: AdminOperationLogRow[]; total: number; page: number; page_size: number }>
+  >('/admin/system/logs/operations', { params })
   return unwrap(res)
 }
 

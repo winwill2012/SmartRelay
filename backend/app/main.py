@@ -8,9 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.admin_audit_middleware import AdminOperationAuditMiddleware
 from app.config import get_settings
 from app.db import AsyncSessionLocal
 from app.db_migrations import (
+    ensure_admin_audit_log_tables,
+    ensure_admin_users_role_column,
     ensure_device_share_tokens_table,
     ensure_devices_ota_progress_columns,
     ensure_devices_relay_on,
@@ -36,6 +39,8 @@ async def lifespan(app: FastAPI):
         await ensure_devices_ota_progress_columns(session)
         await ensure_user_notifications_table(session)
         await ensure_device_share_tokens_table(session)
+        await ensure_admin_users_role_column(session)
+        await ensure_admin_audit_log_tables(session)
         await ensure_default_admin(session)
 
     stop = asyncio.Event()
@@ -65,6 +70,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(AdminOperationAuditMiddleware)
 
     @app.exception_handler(HTTPException)
     async def http_exc_handler(_request, exc: HTTPException):
