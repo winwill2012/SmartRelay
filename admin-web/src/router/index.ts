@@ -40,7 +40,15 @@ export const router = createRouter({
             return true
           }
         },
-        { path: 'settings/logs', name: 'settings-logs', component: SettingsLogsView }
+        {
+          path: 'settings/logs',
+          name: 'settings-logs',
+          component: SettingsLogsView,
+          beforeEnter: () => {
+            if (getAdminRole() === 'visitor') return { name: 'dashboard' }
+            return true
+          }
+        }
       ]
     }
   ]

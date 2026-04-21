@@ -273,6 +273,7 @@ onUnmounted(() => {
               账号管理
             </RouterLink>
             <RouterLink
+              v-if="isAdminRole"
               to="/settings/logs"
               class="admin-sidebar__sublink"
               active-class="router-link-active"

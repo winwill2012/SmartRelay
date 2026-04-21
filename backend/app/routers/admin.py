@@ -169,7 +169,7 @@ async def admin_system_accounts_create(
 
 @router.get("/system/logs/login")
 async def admin_system_logs_login(
-    _a: AdminUser = Depends(get_current_admin),
+    _editor: AdminUser = Depends(require_admin_editor),
     session: AsyncSession = Depends(get_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
@@ -206,7 +206,7 @@ async def admin_system_logs_login(
 
 @router.get("/system/logs/operations")
 async def admin_system_logs_operations(
-    _a: AdminUser = Depends(get_current_admin),
+    _editor: AdminUser = Depends(require_admin_editor),
     session: AsyncSession = Depends(get_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
