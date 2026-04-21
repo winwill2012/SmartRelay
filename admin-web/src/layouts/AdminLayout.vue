@@ -232,7 +232,7 @@ onUnmounted(() => {
           <span>固件管理</span>
         </RouterLink>
 
-        <div class="admin-sidebar__group">
+        <div v-if="isAdminRole" class="admin-sidebar__group">
           <button
             type="button"
             class="admin-sidebar__link admin-sidebar__group-btn"
@@ -264,7 +264,6 @@ onUnmounted(() => {
               修改密码
             </RouterLink>
             <RouterLink
-              v-if="isAdminRole"
               to="/settings/accounts"
               class="admin-sidebar__sublink"
               active-class="router-link-active"
@@ -273,7 +272,6 @@ onUnmounted(() => {
               账号管理
             </RouterLink>
             <RouterLink
-              v-if="isAdminRole"
               to="/settings/logs"
               class="admin-sidebar__sublink"
               active-class="router-link-active"
