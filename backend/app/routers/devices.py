@@ -276,8 +276,10 @@ async def unbind_device(
         return err(NOT_FOUND, "未找到绑定关系")
     ud, dev = pair
     if ud.role == UserDeviceRole.owner:
-        # 所有者解绑：仅移除自己的 owner 绑定
-        await session.execute(delete(UserDevice).where(UserDevice.id == ud.id))
+        # 所有者解绑：移除该设备下全部用户绑定（含所有共享者），并清理分享令牌与定时任务
+        await session.execute(delete(Schedule).where(Schedule.device_id == dev.id))
+        await session.execute(delete(DeviceShareToken).where(DeviceShareToken.device_id == dev.id))
+        await session.execute(delete(UserDevice).where(UserDevice.device_id == dev.id))
         await session.commit()
         return ok({"device_id": dev.device_id, "action": "unbind_owner"})
 
