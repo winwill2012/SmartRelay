@@ -355,6 +355,56 @@ onMounted(() => {
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6 lg:items-stretch">
     <section class="admin-card p-5 flex flex-col min-h-0">
       <div class="flex justify-between items-center gap-2 mb-3 shrink-0 min-h-[2.75rem]">
+        <h2 class="text-sm font-bold text-slate-800">新增用户</h2>
+        <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ barCaption }}</span>
+      </div>
+      <div class="admin-chart-area admin-chart-area--twin flex flex-col h-[260px]">
+        <div
+          class="admin-chart-bars flex-1 min-h-0 h-full"
+          :class="{ 'admin-chart-bars--dense': chartsBarsDense }"
+        >
+          <div v-for="(h, i) in userBarH" :key="'u' + i" class="admin-chart-bars__col">
+            <div class="admin-chart-bars__plot">
+              <div
+                class="admin-chart-bars__bar"
+                :style="{ height: h + 'px' }"
+                @mouseenter="showTip($event, `${chartLabels[i] ?? ''}：${userVals[i] ?? 0} 人`)"
+                @mousemove="moveTip"
+                @mouseleave="hideTip"
+              />
+            </div>
+            <span class="admin-chart-bars__label">{{ chartLabelsDisplay[i] ?? '' }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="admin-card p-5 flex flex-col min-h-0">
+      <div class="flex justify-between items-center gap-2 mb-3 shrink-0 min-h-[2.75rem]">
+        <h2 class="text-sm font-bold text-slate-800">新增设备</h2>
+        <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ deviceBarCaption }}</span>
+      </div>
+      <div class="admin-chart-area admin-chart-area--twin flex flex-col h-[260px]">
+        <div
+          class="admin-chart-bars flex-1 min-h-0 h-full"
+          :class="{ 'admin-chart-bars--dense': chartsBarsDense }"
+        >
+          <div v-for="(h, i) in deviceBarH" :key="'d' + i" class="admin-chart-bars__col">
+            <div class="admin-chart-bars__plot">
+              <div
+                class="admin-chart-bars__bar"
+                :style="{ height: h + 'px' }"
+                @mouseenter="showTip($event, `${chartLabels[i] ?? ''}：${deviceVals[i] ?? 0} 台`)"
+                @mousemove="moveTip"
+                @mouseleave="hideTip"
+              />
+            </div>
+            <span class="admin-chart-bars__label">{{ chartLabelsDisplay[i] ?? '' }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="admin-card p-5 flex flex-col min-h-0">
+      <div class="flex justify-between items-center gap-2 mb-3 shrink-0 min-h-[2.75rem]">
         <h2 class="text-sm font-bold text-slate-800">在线设备数量趋势</h2>
         <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ lineCaption }}</span>
       </div>
@@ -432,56 +482,6 @@ onMounted(() => {
             </text>
           </g>
         </svg>
-      </div>
-    </section>
-    <section class="admin-card p-5 flex flex-col min-h-0">
-      <div class="flex justify-between items-center gap-2 mb-3 shrink-0 min-h-[2.75rem]">
-        <h2 class="text-sm font-bold text-slate-800">新增用户</h2>
-        <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ barCaption }}</span>
-      </div>
-      <div class="admin-chart-area admin-chart-area--twin flex flex-col h-[260px]">
-        <div
-          class="admin-chart-bars flex-1 min-h-0 h-full"
-          :class="{ 'admin-chart-bars--dense': chartsBarsDense }"
-        >
-          <div v-for="(h, i) in userBarH" :key="'u' + i" class="admin-chart-bars__col">
-            <div class="admin-chart-bars__plot">
-              <div
-                class="admin-chart-bars__bar"
-                :style="{ height: h + 'px' }"
-                @mouseenter="showTip($event, `${chartLabels[i] ?? ''}：${userVals[i] ?? 0} 人`)"
-                @mousemove="moveTip"
-                @mouseleave="hideTip"
-              />
-            </div>
-            <span class="admin-chart-bars__label">{{ chartLabelsDisplay[i] ?? '' }}</span>
-          </div>
-        </div>
-      </div>
-    </section>
-    <section class="admin-card p-5 flex flex-col min-h-0">
-      <div class="flex justify-between items-center gap-2 mb-3 shrink-0 min-h-[2.75rem]">
-        <h2 class="text-sm font-bold text-slate-800">新增设备</h2>
-        <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ deviceBarCaption }}</span>
-      </div>
-      <div class="admin-chart-area admin-chart-area--twin flex flex-col h-[260px]">
-        <div
-          class="admin-chart-bars flex-1 min-h-0 h-full"
-          :class="{ 'admin-chart-bars--dense': chartsBarsDense }"
-        >
-          <div v-for="(h, i) in deviceBarH" :key="'d' + i" class="admin-chart-bars__col">
-            <div class="admin-chart-bars__plot">
-              <div
-                class="admin-chart-bars__bar"
-                :style="{ height: h + 'px' }"
-                @mouseenter="showTip($event, `${chartLabels[i] ?? ''}：${deviceVals[i] ?? 0} 台`)"
-                @mousemove="moveTip"
-                @mouseleave="hideTip"
-              />
-            </div>
-            <span class="admin-chart-bars__label">{{ chartLabelsDisplay[i] ?? '' }}</span>
-          </div>
-        </div>
       </div>
     </section>
   </div>
