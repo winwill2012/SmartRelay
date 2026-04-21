@@ -7,7 +7,7 @@
       <text class="ver-value">{{version}}</text>
     </view>
     <view class="copy-block">
-      <text class="copy">Copyright © 2026.微联编程 All rights reserved.</text>
+      <text class="copy">滇ICP备2023004556号</text>
     </view>
   </view>
 </view>

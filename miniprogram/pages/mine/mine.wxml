@@ -83,7 +83,7 @@
           <view class="menu-ico-svg menu-ico-svg--about" />
           <view class="menu-text-wrap">
             <text class="menu-title">关于</text>
-            <text class="menu-desc">版本与版权声明</text>
+            <text class="menu-desc">版本与备案信息</text>
           </view>
         </view>
         <text class="chev">›</text>
