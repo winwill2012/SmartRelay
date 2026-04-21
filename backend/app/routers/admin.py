@@ -129,6 +129,11 @@ async def dashboard_metrics(
     )
     users_new_in_period = int(new_users_p.scalar_one() or 0)
 
+    new_dev_p = await session.execute(
+        select(func.count()).select_from(Device).where(Device.created_at >= p_start, Device.created_at <= p_end)
+    )
+    devices_new_in_period = int(new_dev_p.scalar_one() or 0)
+
     sched_p = await session.execute(
         select(func.count())
         .select_from(DeviceOperationLog)
@@ -177,6 +182,15 @@ async def dashboard_metrics(
         reverse=True,
     )
 
+    fv_top10_r = await session.execute(
+        select(FirmwareVersion.version).order_by(FirmwareVersion.id.desc()).limit(10)
+    )
+    fw_top_versions = list(fv_top10_r.scalars().all())
+    firmware_version_top10: list[dict[str, object]] = []
+    for ver in fw_top_versions:
+        dc_v = await session.scalar(select(func.count()).select_from(Device).where(Device.fw_version == ver))
+        firmware_version_top10.append({"version": ver, "device_count": int(dc_v or 0)})
+
     charts = await build_chart_series(
         session, p_start, p_end, settings.device_offline_seconds, period, rf, rt
     )
@@ -194,10 +208,12 @@ async def dashboard_metrics(
             "commands_today": cmd_today,
             "commands_in_period": commands_in_period,
             "users_new_in_period": users_new_in_period,
+            "devices_new_in_period": devices_new_in_period,
             "schedule_runs_in_period": schedule_runs_in_period,
             "share_bindings_in_period": share_bindings_in_period,
             "pending_fw_upgrade_count": pending_fw,
             "fw_distribution": fw_distribution,
+            "firmware_version_top10": firmware_version_top10,
             "charts": charts,
         }
     )

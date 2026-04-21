@@ -11,6 +11,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Device, DeviceOperationLog, User
 
 
+async def count_devices_created_between(session: AsyncSession, bs: datetime, be_excl: datetime) -> int:
+    """桶内新注册设备（按 Device.created_at）。"""
+    return int(
+        (
+            await session.scalar(
+                select(func.count())
+                .select_from(Device)
+                .where(Device.created_at >= bs, Device.created_at < be_excl)
+            )
+        )
+        or 0
+    )
+
+
 def resolve_dashboard_window(
     period: str,
     now: datetime,
@@ -216,6 +230,7 @@ async def build_chart_series(
     labels: List[str] = []
     online_count_vals: List[int] = []
     user_vals: List[int] = []
+    device_new_vals: List[int] = []
     cmd_vals: List[int] = []
 
     for bs, be_excl, lab in specs:
@@ -225,6 +240,7 @@ async def build_chart_series(
             te = bs
         online_count_vals.append(await online_count_at_instant(session, te, offline_sec))
         user_vals.append(await count_users_between(session, bs, be_excl))
+        device_new_vals.append(await count_devices_created_between(session, bs, be_excl))
         cmd_vals.append(await count_commands_between(session, bs, be_excl))
 
     cap_u = caption_for_period(period, range_from, range_to)
@@ -233,10 +249,12 @@ async def build_chart_series(
         "labels": labels,
         "online_count": online_count_vals,
         "new_users": user_vals,
+        "new_devices": device_new_vals,
         "commands": cmd_vals,
         "captions": {
             "line": f"在线设备数 · {cap_u}（桶末时点）",
             "users": f"新增用户 · {cap_u}",
+            "devices": f"新增设备 · {cap_u}",
             "commands": f"指令下发 · {cap_u}",
         },
     }

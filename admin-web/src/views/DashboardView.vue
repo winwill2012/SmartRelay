@@ -10,8 +10,9 @@ type ChartsPayload = {
   labels: string[]
   online_count: number[]
   new_users: number[]
+  new_devices: number[]
   commands: number[]
-  captions?: { line?: string; users?: string; commands?: string }
+  captions?: { line?: string; users?: string; devices?: string; commands?: string }
 }
 
 const loading = ref(true)
@@ -84,6 +85,12 @@ const userVals = computed(() => {
   return v?.length ? v : [0]
 })
 
+const deviceVals = computed(() => {
+  const c = charts.value
+  const v = c?.new_devices
+  return v?.length ? v : [0]
+})
+
 const cmdVals = computed(() => {
   const c = charts.value
   const v = c?.commands
@@ -100,10 +107,12 @@ const lineChart = computed(() => {
 })
 
 const userBarH = computed(() => barHeights(userVals.value))
+const deviceBarH = computed(() => barHeights(deviceVals.value))
 const cmdBarH = computed(() => barHeights(cmdVals.value, Math.max(...cmdVals.value, 1)))
 
 const lineCaption = computed(() => charts.value?.captions?.line ?? '在线设备数量')
 const barCaption = computed(() => charts.value?.captions?.users ?? '新增用户')
+const deviceBarCaption = computed(() => charts.value?.captions?.devices ?? '新增设备')
 const hourCaption = computed(() => charts.value?.captions?.commands ?? '指令下发')
 
 /** 桶数多时柱宽与字号收紧（含本月按日十余点） */
@@ -199,6 +208,7 @@ const kpiOnlineDev = computed(() => fmtInt(metrics.value.online_count))
 const kpiOnlineRate = computed(() => fmtRate(metrics.value.online_rate_percent))
 const kpiActive = computed(() => fmtInt(metrics.value.active_device_7d))
 const kpiUsers = computed(() => fmtInt(metrics.value.user_count))
+const kpiNewDev = computed(() => fmtInt(metrics.value.devices_new_in_period))
 const kpiCmd = computed(() => fmtInt(metrics.value.commands_in_period))
 
 const subTotal = computed(() => '累计接入设备')
@@ -212,32 +222,23 @@ const subUsers = computed(() => {
   if (customRangeActive.value) return `所选区间新增 ${add}`
   return `${periodLabel[p]}新增 ${add}`
 })
+const subNewDev = computed(() => {
+  if (customRangeActive.value) return '按设备创建时间 · 所选区间'
+  const p = apiPeriod.value
+  return `按设备创建时间 · ${periodLabel[p]}`
+})
 const subCmd = computed(() => {
   if (customRangeActive.value) return '所选区间 · command.sent 累计'
   const p = apiPeriod.value
   return `${periodLabel[p]} · command.sent 累计`
 })
 
-const summaryRows = computed(() => {
-  const fw = metrics.value.pending_fw_upgrade_count
-  const share = metrics.value.share_bindings_in_period
-  const sched = metrics.value.schedule_runs_in_period
-  const p = apiPeriod.value
-  const shareLab = customRangeActive.value ? '所选区间分享新增' : `${periodLabel[p]}分享新增`
-  return [
-    { label: '固件待升级设备', value: fmtInt(fw), valClass: 'font-semibold text-amber-600' },
-    {
-      label: shareLab,
-      value: fmtInt(share),
-      valClass: 'font-semibold text-slate-900'
-    },
-    {
-      label: '定时任务触发',
-      value: typeof sched === 'number' ? sched.toLocaleString('zh-CN') : '—',
-      valClass: 'font-semibold text-slate-900'
-    },
-    { label: '告警（未读）', value: '0', valClass: 'font-semibold text-red-600' }
-  ]
+const firmwareVersionTop10 = computed(() => {
+  const t = metrics.value.firmware_version_top10
+  if (!Array.isArray(t)) return [] as { version: string; device_count: number }[]
+  return t.filter((row): row is { version: string; device_count: number } => {
+    return row != null && typeof row === 'object' && typeof (row as { version?: unknown }).version === 'string'
+  })
 })
 
 onMounted(() => {
@@ -311,7 +312,7 @@ onMounted(() => {
   <p v-if="err" class="text-sm text-red-600 mb-2">{{ err }}</p>
   <p v-if="loading" class="text-sm text-slate-500 mb-4">加载中…</p>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 mb-6">
     <article class="admin-card admin-kpi-card p-5">
       <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">总设备数</p>
       <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">{{ kpiTotalDev }}</p>
@@ -340,13 +341,18 @@ onMounted(() => {
       <p class="mt-1.5 text-xs font-medium text-emerald-600">{{ subUsers }}</p>
     </article>
     <article class="admin-card admin-kpi-card p-5">
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">新增设备</p>
+      <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">{{ kpiNewDev }}</p>
+      <p class="mt-1.5 text-xs font-medium text-slate-500">{{ subNewDev }}</p>
+    </article>
+    <article class="admin-card admin-kpi-card p-5">
       <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">指令数</p>
       <p class="mt-3 text-3xl font-bold text-slate-900 tabular-nums">{{ kpiCmd }}</p>
       <p class="mt-1.5 text-xs text-slate-500">{{ subCmd }}</p>
     </article>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6 lg:items-stretch">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6 lg:items-stretch">
     <section class="admin-card p-5 flex flex-col min-h-0">
       <div class="flex justify-between items-center gap-2 mb-3 shrink-0 min-h-[2.75rem]">
         <h2 class="text-sm font-bold text-slate-800">在线设备数量趋势</h2>
@@ -453,10 +459,35 @@ onMounted(() => {
         </div>
       </div>
     </section>
+    <section class="admin-card p-5 flex flex-col min-h-0">
+      <div class="flex justify-between items-center gap-2 mb-3 shrink-0 min-h-[2.75rem]">
+        <h2 class="text-sm font-bold text-slate-800">新增设备</h2>
+        <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ deviceBarCaption }}</span>
+      </div>
+      <div class="admin-chart-area admin-chart-area--twin flex flex-col h-[260px]">
+        <div
+          class="admin-chart-bars flex-1 min-h-0 h-full"
+          :class="{ 'admin-chart-bars--dense': chartsBarsDense }"
+        >
+          <div v-for="(h, i) in deviceBarH" :key="'d' + i" class="admin-chart-bars__col">
+            <div class="admin-chart-bars__plot">
+              <div
+                class="admin-chart-bars__bar"
+                :style="{ height: h + 'px' }"
+                @mouseenter="showTip($event, `${chartLabels[i] ?? ''}：${deviceVals[i] ?? 0} 台`)"
+                @mousemove="moveTip"
+                @mouseleave="hideTip"
+              />
+            </div>
+            <span class="admin-chart-bars__label">{{ chartLabelsDisplay[i] ?? '' }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 
-  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 xl:items-stretch">
-    <section class="admin-card p-5 xl:col-span-2 flex flex-col min-h-0 h-full">
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 xl:items-stretch">
+    <section class="admin-card p-5 flex flex-col min-h-0 h-full">
       <div class="flex justify-between items-center gap-2 mb-3 shrink-0 min-h-[2.75rem]">
         <h2 class="text-sm font-bold text-slate-800">指令下发量</h2>
         <span class="text-xs text-slate-400 font-medium text-right max-w-[14rem]">{{ hourCaption }}</span>
@@ -482,20 +513,29 @@ onMounted(() => {
       </div>
     </section>
     <section class="admin-card p-5 flex flex-col min-h-0 h-full">
-      <div class="mb-3 shrink-0 min-h-[2.75rem] flex items-center">
-        <h2 class="text-sm font-bold text-slate-800">维度摘要</h2>
+      <div class="mb-3 shrink-0 min-h-[2.75rem] flex items-center justify-between gap-2">
+        <h2 class="text-sm font-bold text-slate-800">最近 10 个固件版本 · 设备数</h2>
+        <span class="text-xs text-slate-400">按固件表 id 倒序</span>
       </div>
-      <ul class="text-sm text-slate-600 flex-1 flex flex-col justify-between gap-3 min-h-0 py-1">
-        <li
-          v-for="(row, idx) in summaryRows"
-          :key="idx"
-          class="flex justify-between"
-          :class="idx < summaryRows.length - 1 ? 'border-b border-slate-100 pb-2' : ''"
-        >
-          <span>{{ row.label }}</span>
-          <span :class="row.valClass">{{ row.value }}</span>
-        </li>
-      </ul>
+      <div class="flex-1 min-h-0 overflow-auto text-sm">
+        <table class="w-full border-collapse text-left">
+          <thead>
+            <tr class="border-b border-slate-200 text-xs text-slate-500">
+              <th class="py-2 pr-2 font-semibold">版本号</th>
+              <th class="py-2 text-right font-semibold tabular-nums">设备数</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, idx) in firmwareVersionTop10" :key="idx" class="border-b border-slate-100 text-slate-700">
+              <td class="py-2 pr-2 font-mono text-xs">{{ row.version }}</td>
+              <td class="py-2 text-right tabular-nums font-medium">{{ row.device_count.toLocaleString('zh-CN') }}</td>
+            </tr>
+            <tr v-if="firmwareVersionTop10.length === 0">
+              <td colspan="2" class="py-8 text-center text-slate-400">暂无固件版本记录</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
   </div>
 </template>
@@ -556,14 +596,11 @@ onMounted(() => {
   }
 }
 @media (min-width: 1280px) {
-  .xl\:grid-cols-3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .xl\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .xl\:grid-cols-6 {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-  .xl\:col-span-2 {
-    grid-column: span 2 / span 2;
+  .xl\:grid-cols-7 {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
   .xl\:items-stretch {
     align-items: stretch;
