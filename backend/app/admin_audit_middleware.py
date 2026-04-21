@@ -1,6 +1,10 @@
-"""记录后台管理员对 API 的变更类请求（POST/PUT/PATCH/DELETE），便于审计。"""
+"""记录后台管理员对 API 的变更类请求（POST/PUT/PATCH/DELETE），便于审计。
+
+写入在后台异步执行，避免 await DB 拖住响应（MySQL 慢或锁时否则会导致整站接口挂起）。
+"""
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime
 
@@ -14,6 +18,23 @@ from app.models import AdminOperationLog
 from app.security import try_decode_token
 
 logger = logging.getLogger(__name__)
+
+
+async def _persist_operation_log(admin_id: int, method: str, path: str, status_code: int | None) -> None:
+    try:
+        async with AsyncSessionLocal() as session:
+            session.add(
+                AdminOperationLog(
+                    admin_user_id=admin_id,
+                    method=method,
+                    path=path,
+                    status_code=status_code,
+                    created_at=datetime.now(),
+                )
+            )
+            await session.commit()
+    except Exception:
+        logger.exception("admin_operation_log insert failed")
 
 
 class AdminOperationAuditMiddleware(BaseHTTPMiddleware):
@@ -41,17 +62,8 @@ class AdminOperationAuditMiddleware(BaseHTTPMiddleware):
             aid = int(payload["sub"])
         except (KeyError, ValueError, TypeError):
             return response
-        try:
-            async with AsyncSessionLocal() as session:
-                row = AdminOperationLog(
-                    admin_user_id=aid,
-                    method=method[:8],
-                    path=path[:512],
-                    status_code=response.status_code,
-                    created_at=datetime.now(),
-                )
-                session.add(row)
-                await session.commit()
-        except Exception:
-            logger.exception("admin_operation_log insert failed")
+        m = method[:8]
+        p = path[:512]
+        sc = response.status_code
+        asyncio.get_running_loop().create_task(_persist_operation_log(aid, m, p, sc))
         return response
