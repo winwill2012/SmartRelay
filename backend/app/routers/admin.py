@@ -576,7 +576,17 @@ async def admin_device_detail(
         return err(NOT_FOUND, "设备不存在")
     r2 = await session.execute(select(UserDevice, User).join(User, User.id == UserDevice.user_id).where(UserDevice.device_id == d.id))
     pairs = r2.all()
-    bindings = [{"user_id": u.id, "openid": u.openid, "remark": ud.remark, "role": ud.role.value} for ud, u in pairs]
+    bindings = [
+        {
+            "user_id": u.id,
+            "openid": u.openid,
+            "nickname": u.nickname,
+            "remark": ud.remark,
+            "role": ud.role.value,
+            "bound_at": ud.created_at.isoformat() if ud.created_at else None,
+        }
+        for ud, u in pairs
+    ]
     return ok(
         {
             "id": d.id,

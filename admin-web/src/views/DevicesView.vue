@@ -406,11 +406,23 @@ onMounted(() => {
             <li
               v-for="(b, i) in (detailDevice.bindings as Record<string, unknown>[])"
               :key="i"
-              class="rounded-lg border border-slate-100 px-3 py-2 text-xs bg-slate-50/80"
+              class="rounded-lg border border-slate-100 px-3 py-2.5 text-xs bg-slate-50/80 space-y-1.5"
             >
-              <span class="text-slate-600">备注 {{ (b.remark as string) || '—' }}</span>
-              <span class="text-slate-400 mx-1">·</span>
-              <span class="text-slate-500">角色 {{ b.role }}</span>
+              <div class="flex flex-wrap gap-x-2 gap-y-0.5">
+                <span class="text-slate-500 shrink-0">用户昵称</span>
+                <span class="text-slate-900 font-medium">{{ (b.nickname as string) || '—' }}</span>
+              </div>
+              <div class="flex flex-wrap gap-x-2 gap-y-0.5">
+                <span class="text-slate-500 shrink-0">绑定时间</span>
+                <span class="text-slate-700 tabular-nums">{{ formatAdminDateTime(b.bound_at as string) }}</span>
+              </div>
+              <div class="flex flex-wrap gap-x-2 gap-y-0.5 pt-0.5 border-t border-slate-100/80">
+                <span class="text-slate-500">备注</span>
+                <span class="text-slate-700">{{ (b.remark as string) || '—' }}</span>
+                <span class="text-slate-300 mx-0.5">·</span>
+                <span class="text-slate-500">角色</span>
+                <span class="text-slate-600">{{ b.role }}</span>
+              </div>
             </li>
           </ul>
         </div>
