@@ -14,24 +14,39 @@
     </view>
 
     <view class="action-area">
-      <button class="wx-btn" loading="{{loading}}" bindtap="onWxLogin" hover-class="wx-btn-hover">
+      <view class="legal">
+        <view class="legal-inner">
+          <checkbox-group class="legal-group" bindchange="onAgreeChange">
+            <label class="legal-row">
+              <checkbox class="legal-cb" value="agree" color="#07c160" />
+              <view class="legal-body">
+                <text class="legal-text">我已阅读并同意</text>
+                <navigator
+                  class="legal-link"
+                  url="/pages/user-agreement/user-agreement"
+                  hover-class="legal-link-hover"
+                >《用户协议》</navigator>
+                <text class="legal-text">与</text>
+                <navigator
+                  class="legal-link"
+                  url="/pages/privacy-policy/privacy-policy"
+                  hover-class="legal-link-hover"
+                >《隐私保护指引》</navigator>
+              </view>
+            </label>
+          </checkbox-group>
+        </view>
+      </view>
+
+      <button
+        class="wx-btn"
+        disabled="{{!agreed || loading}}"
+        loading="{{loading}}"
+        bindtap="onWxLogin"
+        hover-class="wx-btn-hover"
+      >
         <text class="wx-btn-label">微信一键登录</text>
       </button>
-
-      <view class="legal">
-        <text class="legal-text">登录即表示同意</text>
-        <navigator
-          class="legal-link"
-          url="/pages/user-agreement/user-agreement"
-          hover-class="legal-link-hover"
-        >《用户协议》</navigator>
-        <text class="legal-text">与</text>
-        <navigator
-          class="legal-link"
-          url="/pages/privacy-policy/privacy-policy"
-          hover-class="legal-link-hover"
-        >《隐私政策》</navigator>
-      </view>
     </view>
   </view>
 </view>

@@ -94,6 +94,15 @@
   flex-shrink: 0;
   width: 100%;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.wx-btn[disabled] {
+  background: #9dd9b5 !important;
+  color: rgba(255, 255, 255, 0.85);
+  box-shadow: none;
 }
 
 .wx-btn {
@@ -124,13 +133,50 @@
   letter-spacing: 0.06em;
 }
 
+/* 与下方按钮同宽区域，内部协议行按内容宽度收缩并水平居中 */
 .legal {
-  margin-top: 24rpx;
-  padding: 0 8rpx;
+  margin-bottom: 28rpx;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.legal-inner {
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* 原生组件对 flex 支持不一：用行内块整体居中，内部文案仍左对齐阅读 */
+.legal-group {
+  display: inline-block;
+  max-width: 100%;
+  text-align: left;
+  vertical-align: top;
+}
+
+.legal-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 与右侧文案行高对齐；去掉 margin-top，避免与 flex-start 叠加导致错位 */
+.legal-cb {
+  margin-right: 12rpx;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.legal-body {
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   align-items: center;
+  align-content: center;
   row-gap: 6rpx;
   column-gap: 4rpx;
 }

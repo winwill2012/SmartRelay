@@ -18,6 +18,8 @@ static bool s_prov_session;
 static int s_cached_wifi_status = 6;
 static int s_cached_wifi_rssi = 0;
 static int64_t s_last_wifi_sample_ms = 0;
+/** 断线后快速重连：与 heal 并行，缩短掉线恢复时间（限频避免与驱动冲突）。 */
+static int64_t s_last_sta_fast_reconn_ms = 0;
 
 static const char *reason_hint(uint8_t reason) {
   switch (reason) {
@@ -58,6 +60,15 @@ static void on_wifi(void *arg, esp_event_base_t base, int32_t id, void *data) {
       ESP_LOGW(TAG, "STA disconnected reason=%u rssi=%d (%s)", ev ? ev->reason : 0, ev ? ev->rssi : 0, hint);
     } else {
       ESP_LOGW(TAG, "STA disconnected reason=%u rssi=%d", ev ? ev->reason : 0, ev ? ev->rssi : 0);
+    }
+    /* 非配网、非明确密码错误时尽快发起重连，避免仅靠 heal 的秒级间隔 */
+    if (!s_prov_session && ev && ev->reason != WIFI_REASON_AUTH_FAIL) {
+      int64_t ms = esp_timer_get_time() / 1000;
+      if (ms - s_last_sta_fast_reconn_ms >= 1500) {
+        s_last_sta_fast_reconn_ms = ms;
+        ESP_LOGI(TAG, "STA fast reconnect (reason=%u)", (unsigned)ev->reason);
+        esp_wifi_connect();
+      }
     }
   }
 }
@@ -264,8 +275,8 @@ void sr_wifi_heal_tick(bool prov_running, bool prov_pending, int *heal_attempt,
     return;
   }
 
-  if (st == ESP_ERR_WIFI_NOT_CONNECT && (ms - *last_heal_ms) < 35000) return;
-  if ((ms - *last_heal_ms) < 12000) return;
+  if (st == ESP_ERR_WIFI_NOT_CONNECT && (ms - *last_heal_ms) < 6000) return;
+  if ((ms - *last_heal_ms) < 4500) return;
 
   *last_heal_ms = ms;
 

@@ -1,4 +1,5 @@
 #include "sr_ota.h"
+#include "sr_led.h"
 #include "esp_log.h"
 #include "esp_http_client.h"
 #include "esp_ota_ops.h"
@@ -6,6 +7,7 @@
 #include "esp_rom_md5.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_task_wdt.h"
 #include <cstdio>
 #include <cstring>
 #include <cctype>
@@ -204,6 +206,8 @@ void sr_ota_https(const char *url, const char *md5expect32, size_t size_hint, sr
     }
     done += (size_t)rd;
     if (total > 0 && on_prog) on_prog((int)(done * 100 / (size_t)total), "download");
+    sr_led_tick();
+    if ((done & 0x3FFF) == 0) esp_task_wdt_reset();
   }
   if (done < (size_t)total) {
     ESP_LOGE(TAG, "OTA abort: short read done=%u expected=%d", (unsigned)done, total);

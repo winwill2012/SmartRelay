@@ -62,7 +62,7 @@
         <view class="menu-left">
           <view class="menu-ico-svg menu-ico-svg--privacy" />
           <view class="menu-text-wrap">
-            <text class="menu-title">隐私政策</text>
+            <text class="menu-title">隐私保护指引</text>
             <text class="menu-desc">个人信息保护说明</text>
           </view>
         </view>

@@ -2,7 +2,16 @@ const auth = require('../../utils/auth.js')
 const api = require('../../utils/api.js')
 
 Page({
-  data: { loading: false },
+  data: {
+    loading: false,
+    /** 须用户主动勾选，不得默认同意（小程序隐私合规） */
+    agreed: false
+  },
+
+  onAgreeChange(e) {
+    const vals = e.detail.value || []
+    this.setData({ agreed: vals.indexOf('agree') >= 0 })
+  },
 
   onLoad(query) {
     this.redirect = ''
@@ -27,6 +36,10 @@ Page({
 
   onWxLogin() {
     if (this.data.loading) return
+    if (!this.data.agreed) {
+      wx.showToast({ title: '请先阅读并勾选同意相关协议', icon: 'none' })
+      return
+    }
     this.setData({ loading: true })
     this._loginWithRetry(0)
   },

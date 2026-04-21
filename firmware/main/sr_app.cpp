@@ -152,12 +152,19 @@ static void publish_lwt_online(void) {
 /** 配网成功后尽快连上 MQTT 并上报，让服务端 last_seen 刷新，避免用户绑定后列表仍显示离线 */
 static void provision_await_mqtt_and_publish(void) {
   int64_t t0 = now_ms();
-  while (!sr_mqtt_connected() && (now_ms() - t0) < 10000) {
-    vTaskDelay(pdMS_TO_TICKS(40));
+  int64_t last_restart = t0;
+  while (!sr_mqtt_connected() && (now_ms() - t0) < 15000) {
+    vTaskDelay(pdMS_TO_TICKS(10));
     esp_task_wdt_reset();
+    int64_t ms = now_ms();
+    if (ms - t0 >= 1500 && ms - last_restart >= 2000) {
+      last_restart = ms;
+      sr_mqtt_stop_disconnect();
+      sr_mqtt_start();
+    }
   }
   if (!sr_mqtt_connected()) {
-    ESP_LOGW(TAG, "provision: mqtt not ready in 10s, will retry in main loop");
+    ESP_LOGW(TAG, "provision: mqtt not ready in 15s, will retry in main loop");
     return;
   }
   publish_lwt_online();
@@ -243,6 +250,15 @@ static void wait_ip_ms(uint32_t ms) {
   }
 }
 
+/** 配网阶段轮询更密，拿到 DHCP 后尽快进入 MQTT，减少用户体感等待 */
+static void wait_ip_provision_ms(uint32_t ms) {
+  int64_t t0 = now_ms();
+  while (!sr_wifi_has_ip() && (now_ms() - t0) < (int64_t)ms) {
+    vTaskDelay(pdMS_TO_TICKS(80));
+    esp_task_wdt_reset();
+  }
+}
+
 /** sr_wifi_begin / begin_bssid 内会打开 MIN_MODEM；配网阶段覆盖为 PS_NONE，减轻 C3 单天线与 BLE 并发时关联失败 */
 static void prov_connect_plain(const char *ssid, const char *pass) {
   sr_wifi_begin(ssid, pass);
@@ -275,7 +291,7 @@ static void run_wifi_provisioning(const char *ssid, const char *pass) {
 
   log_prov(seq, "WIFI", "begin #1 (no pre-scan, coexist)");
   prov_connect_plain(ssid, pass);
-  wait_ip_ms(40000);
+  wait_ip_provision_ms(40000);
 
   if (!sr_wifi_has_ip()) {
     log_prov(seq, "WIFI", "scan for bssid");
@@ -290,7 +306,7 @@ static void run_wifi_provisioning(const char *ssid, const char *pass) {
     esp_wifi_disconnect();
     vTaskDelay(pdMS_TO_TICKS(400));
     prov_connect_bssid(ssid, pass, ch, bssid);
-    wait_ip_ms(40000);
+    wait_ip_provision_ms(40000);
   }
 
   if (!sr_wifi_has_ip()) {
@@ -298,7 +314,7 @@ static void run_wifi_provisioning(const char *ssid, const char *pass) {
     esp_wifi_disconnect();
     vTaskDelay(pdMS_TO_TICKS(400));
     prov_connect_plain(ssid, pass);
-    wait_ip_ms(40000);
+    wait_ip_provision_ms(40000);
   }
 
   if (!sr_wifi_has_ip()) {
@@ -309,7 +325,7 @@ static void run_wifi_provisioning(const char *ssid, const char *pass) {
     vTaskDelay(pdMS_TO_TICKS(250));
     sr_wifi_provision_reapply_phy_after_wifi_reset();
     prov_connect_plain(ssid, pass);
-    wait_ip_ms(35000);
+    wait_ip_provision_ms(35000);
   }
 
   cJSON *res = cJSON_CreateObject();
@@ -558,6 +574,8 @@ static void on_mqtt_msg(const char *topic, size_t topic_len, const char *payload
     s_last_ota_pub_pct = -1;
     s_last_ota_pub_ms = 0;
     s_ota_busy = true;
+    sr_led_set_mode(SR_LED_OTA_BREATH);
+    sr_led_tick();
     sr_ota_https(url_copy.c_str(), md5_copy.c_str(), sz, publish_ota_progress);
     s_ota_busy = false;
     ESP_LOGW(TAG, "OTA sr_ota_https returned (unexpected if success path rebooted)");
@@ -731,6 +749,9 @@ void sr_app_main(void) {
       std::string p = s_prov_pass;
       run_wifi_provisioning(s.c_str(), p.c_str());
       if (sr_wifi_has_ip()) {
+        s_last_mqtt_try = 0;
+        s_mqtt_fail_streak = 0;
+        s_mqtt_off_since = 0;
         sr_mqtt_start();
         provision_await_mqtt_and_publish();
         sr_led_set_mode(SR_LED_ONLINE_SOLID);
