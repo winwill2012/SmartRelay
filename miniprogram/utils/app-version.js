@@ -3,7 +3,7 @@
  * 开发者工具/体验版常为空，使用 DEFAULT_VERSION 兜底。
  * 注意：此为「小程序」版本展示用，与设备固件 FW_VERSION（见 firmware/main/include/sr_config.h）无关。
  */
-const DEFAULT_VERSION = '1.0.0'
+const DEFAULT_VERSION = '1.0.6'
 
 function getMiniProgramVersion() {
   try {
