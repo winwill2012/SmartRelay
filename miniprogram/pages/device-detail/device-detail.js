@@ -26,7 +26,8 @@ Page({
   data: {
     loading: true,
     device: {},
-    encodedName: ''
+    encodedName: '',
+    hasFirmwareUpdate: false
   },
 
   onLoad(q) {
@@ -54,9 +55,28 @@ Page({
         encodedName: encodeURIComponent(device.name || ''),
         loading: false
       })
+      this._refreshFirmwareUpdateHint(device.device_id)
     } catch (e) {
       this.setData({ loading: false })
       wx.showToast({ title: e.message || '加载失败', icon: 'none' })
+    }
+  },
+
+  async _refreshFirmwareUpdateHint(deviceId) {
+    if (!deviceId) {
+      this.setData({ hasFirmwareUpdate: false })
+      return
+    }
+    const reqId = (this._fwCheckReqId || 0) + 1
+    this._fwCheckReqId = reqId
+    try {
+      const data = await api.otaCheck(deviceId)
+      if (reqId !== this._fwCheckReqId) return
+      const has = !!(data && data.latest && data.update_available)
+      this.setData({ hasFirmwareUpdate: has })
+    } catch (e) {
+      if (reqId !== this._fwCheckReqId) return
+      this.setData({ hasFirmwareUpdate: false })
     }
   },
 

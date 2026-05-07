@@ -107,6 +107,15 @@ Page({
     }
   },
 
+  onHardwarePurchase() {
+    wx.showModal({
+      title: '硬件采购',
+      content: '淘宝搜索店铺“微联编程”采购配套智能开关硬件',
+      showCancel: false,
+      confirmText: '知道了'
+    })
+  },
+
   onLogout() {
     auth.setToken('')
     this.setData({

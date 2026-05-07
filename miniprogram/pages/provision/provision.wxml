@@ -53,12 +53,12 @@
   <view wx:if="{{step===1}}" class="block">
     <text class="label">Wi-Fi 网络</text>
     <view class="picker-box">
-      <input class="picker-input" placeholder="输入 Wi-Fi 名称" value="{{wifiSsid}}" bindinput="onSsid"/>
+      <input class="picker-input" placeholder="{{isIOS ? '输入WiFi名称，仅支持2.4G' : '输入 Wi-Fi 名称'}}" value="{{wifiSsid}}" bindinput="onSsid"/>
       <view class="picker-actions">
-        <view class="wifi-refresh" catchtap="refreshWifiList" hover-class="none">
+        <view wx:if="{{!isIOS}}" class="wifi-refresh" catchtap="refreshWifiList" hover-class="none">
           <text class="wifi-refresh-text {{wifiLoading ? 'loading' : ''}}">刷新</text>
         </view>
-        <text class="picker-arrow {{wifiListEnriched.length ? '' : 'muted'}}" bindtap="openWifiSheet">›</text>
+        <text wx:if="{{!isIOS}}" class="picker-arrow {{wifiListEnriched.length ? '' : 'muted'}}" bindtap="openWifiSheet">›</text>
       </view>
     </view>
 

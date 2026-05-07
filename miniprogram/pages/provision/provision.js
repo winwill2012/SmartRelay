@@ -3,8 +3,18 @@ const wifi = require('../../utils/wifi.js')
 
 const app = getApp()
 
+function isIOS() {
+  try {
+    const sys = wx.getSystemInfoSync()
+    return String(sys.platform || '').toLowerCase() === 'ios'
+  } catch (e) {
+    return false
+  }
+}
+
 Page({
   data: {
+    isIOS: isIOS(),
     step: 0,
     scanning: false,
     found: [],
@@ -75,13 +85,22 @@ Page({
 
   async refreshWifiList() {
     if (this.data.wifiLoading) return
+    if (isIOS()) {
+      this.setData({
+        wifiLoading: false,
+        wifiListRaw: [],
+        wifiListEnriched: [],
+        showWifiSheet: false
+      })
+      return
+    }
     this.setData({
       wifiLoading: true,
       wifiListRaw: [],
       wifiListEnriched: []
     })
     try {
-      await ble.authorizeLocationIfNeeded()
+      await ble.authorizeLocationIfNeeded({ forWifi: true })
       const list = (await wifi.getNearbyWifiList()).filter((w) =>
         String(w.SSID || '')
           .trim()

@@ -2,10 +2,6 @@
   <view class="card">
     <text class="app-name">一念开合</text>
     <text class="app-tag">智能开关</text>
-    <view class="ver-row">
-      <text class="ver-label">小程序版本</text>
-      <text class="ver-value">{{version}}</text>
-    </view>
     <view class="copy-block">
       <text class="copy">滇ICP备2023004556号</text>
     </view>

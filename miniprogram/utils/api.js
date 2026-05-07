@@ -1,15 +1,51 @@
 const { getApiBase, isLocalhostApiBase } = require('./config.js')
 const auth = require('./auth.js')
 
+function isUnauthorizedText(msg) {
+  const s = String(msg || '')
+  return /未授权|未登录|unauthorized|not authorized|forbidden|invalid token|token.*(expired|invalid)|401/i.test(
+    s
+  )
+}
+
+function toFriendlyMessage(msg, statusCode) {
+  const raw = String(msg || '').trim()
+  if (statusCode === 401 || isUnauthorizedText(raw)) {
+    return '登录状态已失效，请重新登录'
+  }
+  if (/timeout|timed out|超时/i.test(raw)) {
+    return '请求超时，请稍后重试'
+  }
+  if (/request:fail|network|fail connect|econn|enotfound|连接失败|网络/i.test(raw)) {
+    return '网络连接异常，请检查网络后重试'
+  }
+  if (/not found|不存在|404/i.test(raw)) {
+    return '请求的内容不存在'
+  }
+  if (/permission|无权限|拒绝|forbidden|denied/i.test(raw)) {
+    return '暂无权限执行该操作'
+  }
+  if (!raw) return '服务暂时不可用，请稍后重试'
+  return raw
+}
+
+function markUnauthorized(err, statusCode, bodyCode) {
+  const unauthorized = statusCode === 401 || bodyCode === 401 || isUnauthorizedText(err && err.message)
+  if (unauthorized) {
+    err.isUnauthorized = true
+    auth.setToken('')
+  }
+}
+
 /**
  * 从非标准 JSON（如 FastAPI { detail }、网关 HTML）解析可读错误文案，避免出现「错误 undefined」
  */
 function parseHttpErrorMessage(body, statusCode) {
   if (body && typeof body.message === 'string' && body.message.trim()) {
-    return body.message.trim()
+    return toFriendlyMessage(body.message.trim(), statusCode)
   }
   const d = body && body.detail
-  if (typeof d === 'string' && d.trim()) return d.trim()
+  if (typeof d === 'string' && d.trim()) return toFriendlyMessage(d.trim(), statusCode)
   if (Array.isArray(d) && d.length) {
     const parts = d
       .map((x) => {
@@ -19,13 +55,13 @@ function parseHttpErrorMessage(body, statusCode) {
         return ''
       })
       .filter(Boolean)
-    if (parts.length) return parts.join('; ')
+    if (parts.length) return toFriendlyMessage(parts.join('；'), statusCode)
   }
   if (body && body.code !== undefined && body.code !== null) {
-    return `错误码 ${body.code}`
+    return toFriendlyMessage('', statusCode)
   }
   if (statusCode && statusCode !== 200) {
-    return `请求失败 (${statusCode})`
+    return toFriendlyMessage('', statusCode)
   }
   return '服务返回异常，请稍后重试'
 }
@@ -57,9 +93,10 @@ function request(options) {
         const status = res.statusCode || 0
         if (typeof body !== 'object' || body === null) {
           const err = new Error(
-            status >= 400 ? `请求失败 (${status})` : '响应格式错误'
+            status >= 400 ? toFriendlyMessage('', status) : '响应格式错误，请稍后重试'
           )
           err.httpStatus = status
+          markUnauthorized(err, status)
           reject(err)
           return
         }
@@ -72,12 +109,14 @@ function request(options) {
           const err = new Error(msg)
           err.code = body.code
           err.httpStatus = status
+          markUnauthorized(err, status, body.code)
           reject(err)
           return
         }
         const err = new Error(parseHttpErrorMessage(body, status))
         if (body.code !== undefined) err.code = body.code
         err.httpStatus = status
+        markUnauthorized(err, status, body.code)
         reject(err)
       },
       fail(err) {
@@ -94,11 +133,11 @@ function formatRequestFail(err) {
   const raw = (err && err.errMsg) || String(err || '')
   if (/request:fail|fail connect|timeout|timed out/i.test(raw)) {
     if (isLocalhostApiBase()) {
-      return '真机无法访问127.0.0.1：请在app.js把apiBase改为电脑局域网IP（如http://192.168.1.5:8000/api/v1）'
+      return '当前网络无法连接到服务，请确认已切换为可访问的服务器地址'
     }
-    return '网络失败：确认后端已启动、apiBase可访问、防火墙放行8000端口'
+    return '网络连接异常，请检查网络后重试'
   }
-  return raw || '网络错误'
+  return toFriendlyMessage(raw, 0) || '网络错误'
 }
 
 // —— 小程序 HTTP API（协议标准 §5.1）——
@@ -323,6 +362,10 @@ function deviceClaim(payload) {
   return request({ url: '/device/claim', method: 'POST', data: payload })
 }
 
+function isUnauthorizedError(err) {
+  return !!(err && (err.isUnauthorized || err.httpStatus === 401 || err.code === 401 || isUnauthorizedText(err.message)))
+}
+
 module.exports = {
   request,
   authWechat,
@@ -353,5 +396,6 @@ module.exports = {
   getNotifications,
   patchNotificationRead,
   deleteNotification,
-  deviceClaim
+  deviceClaim,
+  isUnauthorizedError
 }

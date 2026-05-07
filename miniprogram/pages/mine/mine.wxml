@@ -78,12 +78,22 @@
         </view>
         <text class="chev">›</text>
       </navigator>
+      <view class="menu-row border" hover-class="menu-row--hover" bindtap="onHardwarePurchase">
+        <view class="menu-left">
+          <view class="menu-ico-svg menu-ico-svg--buy" />
+          <view class="menu-text-wrap">
+            <text class="menu-title">硬件采购</text>
+            <text class="menu-desc">配套硬件购买指引</text>
+          </view>
+        </view>
+        <text class="chev">›</text>
+      </view>
       <navigator url="/pages/about/about" class="menu-row" hover-class="menu-row--hover">
         <view class="menu-left">
           <view class="menu-ico-svg menu-ico-svg--about" />
           <view class="menu-text-wrap">
             <text class="menu-title">关于</text>
-            <text class="menu-desc">版本与备案信息</text>
+            <text class="menu-desc">备案信息</text>
           </view>
         </view>
         <text class="chev">›</text>

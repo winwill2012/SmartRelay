@@ -71,7 +71,10 @@
         hover-class="menu-row-hover"
       >
         <text>检查更新</text>
-        <text class="sub">当前 {{device.fw_version || '—'}} ›</text>
+        <view class="menu-right">
+          <view wx:if="{{hasFirmwareUpdate}}" class="fw-update-dot"/>
+          <text class="sub">当前 {{device.fw_version || '—'}} ›</text>
+        </view>
       </navigator>
     </view>
 

@@ -90,6 +90,19 @@ Page({
       const displayList = applyFilter(rawList, this.data.filter)
       this.setData({ rawList, displayList, loading: false })
     } catch (e) {
+      if (api.isUnauthorizedError && api.isUnauthorizedError(e)) {
+        this.setData({
+          loggedIn: false,
+          loading: false,
+          error: '',
+          rawList: [],
+          displayList: []
+        })
+        if (!silent) {
+          wx.showToast({ title: '登录已失效，请重新登录', icon: 'none' })
+        }
+        return
+      }
       if (!silent) {
         this.setData({
           loading: false,

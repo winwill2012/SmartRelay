@@ -40,18 +40,44 @@ function openBluetooth() {
   })
 }
 
-/** Android 6+ 扫描 BLE 常需定位权限（系统策略），否则可能搜不到设备 */
-function authorizeLocationIfNeeded() {
-  return new Promise((resolve) => {
+/**
+ * 扫描 BLE 时：Android 常需定位权限；
+ * 获取 Wi-Fi 列表时：iOS/Android 都可能需要定位权限。
+ */
+function authorizeLocationIfNeeded(options = {}) {
+  const forWifi = !!(options && options.forWifi)
+  return new Promise((resolve, reject) => {
     try {
       const sys = wx.getSystemInfoSync()
-      if (sys.platform !== 'android') {
+      const platform = String(sys.platform || '').toLowerCase()
+      const needLocation = platform === 'android' || (forWifi && platform === 'ios')
+      if (!needLocation) {
         resolve()
         return
       }
-      wx.authorize({
-        scope: 'scope.userLocation',
-        complete: () => resolve()
+
+      wx.getSetting({
+        success: (st) => {
+          const auth = (st && st.authSetting) || {}
+          if (auth['scope.userLocation']) {
+            resolve()
+            return
+          }
+          wx.authorize({
+            scope: 'scope.userLocation',
+            success: () => resolve(),
+            fail: () => reject(new Error('请在系统设置中开启“定位权限”后重试')),
+            complete: () => {}
+          })
+        },
+        fail: () => {
+          wx.authorize({
+            scope: 'scope.userLocation',
+            success: () => resolve(),
+            fail: () => reject(new Error('请在系统设置中开启“定位权限”后重试')),
+            complete: () => {}
+          })
+        }
       })
     } catch (e) {
       resolve()

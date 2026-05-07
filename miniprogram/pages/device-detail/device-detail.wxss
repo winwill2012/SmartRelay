@@ -175,6 +175,21 @@
   color: #94a3b8;
 }
 
+.menu-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.fw-update-dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 9999rpx;
+  background: #ef4444;
+  box-shadow: 0 0 0 4rpx rgba(239, 68, 68, 0.18);
+  flex-shrink: 0;
+}
+
 .menu-name-peek {
   max-width: 340rpx;
   overflow: hidden;
