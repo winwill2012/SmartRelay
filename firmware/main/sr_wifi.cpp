@@ -21,6 +21,28 @@ static int64_t s_last_wifi_sample_ms = 0;
 /** 断线后快速重连：与 heal 并行，缩短掉线恢复时间（限频避免与驱动冲突）。 */
 static int64_t s_last_sta_fast_reconn_ms = 0;
 
+static esp_err_t set_sta_config_safe(const wifi_config_t *cfg) {
+  wifi_config_t cfg_local = *cfg;
+  esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &cfg_local);
+  if (err == ESP_OK) return ESP_OK;
+
+  if (err == ESP_ERR_WIFI_STATE) {
+    // 驱动处于 CONNECTING 时不可 set_config，先断开再重试，避免触发 ESP_ERROR_CHECK 崩溃重启。
+    ESP_LOGW(TAG, "set_config while connecting, disconnect then retry");
+    esp_err_t d = esp_wifi_disconnect();
+    if (d != ESP_OK && d != ESP_ERR_WIFI_NOT_CONNECT) {
+      ESP_LOGW(TAG, "disconnect before set_config failed err=%d", (int)d);
+    }
+    vTaskDelay(pdMS_TO_TICKS(120));
+    cfg_local = *cfg;
+    err = esp_wifi_set_config(WIFI_IF_STA, &cfg_local);
+    if (err == ESP_OK) return ESP_OK;
+  }
+
+  ESP_LOGE(TAG, "set_config failed err=%d", (int)err);
+  return err;
+}
+
 static const char *reason_hint(uint8_t reason) {
   switch (reason) {
   case WIFI_REASON_NO_AP_FOUND:
@@ -96,6 +118,13 @@ void sr_wifi_init(void) {
   ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &on_ip, nullptr));
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ESP_ERROR_CHECK(esp_wifi_start());
+  // 在继电器供电干扰场景下，优先稳定性：关闭省电、使用 11b/g、降低峰值发射功率。
+  ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+  esp_err_t proto_err = esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G);
+  if (proto_err != ESP_OK) ESP_LOGW(TAG, "set_protocol(BG) err=%d", (int)proto_err);
+  // 单位是 0.25dBm；52 ~= 13dBm，通常能显著降低供电尖峰电流。
+  esp_err_t txp_err = esp_wifi_set_max_tx_power(52);
+  if (txp_err != ESP_OK) ESP_LOGW(TAG, "set_max_tx_power err=%d", (int)txp_err);
   /* 关闭乐鑫 WiFi 库 tag「wifi」的 W级刷屏（如 Haven't to connect to a suitable AP）；业务日志仍用本文件 TAG「sr_wifi」 */
   esp_log_level_set("wifi", ESP_LOG_ERROR);
 }
@@ -164,8 +193,9 @@ void sr_wifi_provision_session_end(void) {
   if (esp_coex_preference_set(ESP_COEX_PREFER_BALANCE) != ESP_OK) {
     ESP_LOGW(TAG, "provision: coex balance failed");
   }
-  esp_err_t e = esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N);
-  if (e != ESP_OK) ESP_LOGW(TAG, "provision end: set_protocol(BGN) err=%d", (int)e);
+  // 保持 BG 稳定档，避免继电器噪声场景下 HT 协商导致连接抖动。
+  esp_err_t e = esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G);
+  if (e != ESP_OK) ESP_LOGW(TAG, "provision end: set_protocol(BG) err=%d", (int)e);
 }
 
 void sr_wifi_begin(const char *ssid, const char *pass) {
@@ -174,10 +204,13 @@ void sr_wifi_begin(const char *ssid, const char *pass) {
   strncpy((char *)w.sta.password, pass ? pass : "", sizeof(w.sta.password) - 1);
   w.sta.bssid_set = false;
   sta_config_common(&w);
-  ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &w));
-  if (!s_prov_session) {
-    sr_wifi_set_modem_sleep(true);
+  esp_err_t set_err = set_sta_config_safe(&w);
+  if (set_err != ESP_OK) {
+    // 保持设备可运行：若配置写入失败，至少尝试按当前驱动配置继续重连。
+    ESP_LOGW(TAG, "begin fallback connect with existing sta config");
   }
+  // 连接阶段关闭 modem sleep，降低 AUTH_EXPIRE / CONNECTION_FAIL 概率。
+  sr_wifi_set_modem_sleep(false);
   esp_wifi_connect();
 }
 
@@ -191,10 +224,12 @@ void sr_wifi_begin_bssid(const char *ssid, const char *pass, int channel, const 
     w.sta.bssid_set = true;
   }
   sta_config_common(&w);
-  ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &w));
-  if (!s_prov_session) {
-    sr_wifi_set_modem_sleep(true);
+  esp_err_t set_err = set_sta_config_safe(&w);
+  if (set_err != ESP_OK) {
+    ESP_LOGW(TAG, "begin_bssid fallback connect with existing sta config");
   }
+  // 连接阶段关闭 modem sleep，降低认证与关联阶段的丢包敏感性。
+  sr_wifi_set_modem_sleep(false);
   esp_wifi_connect();
 }
 
@@ -280,12 +315,11 @@ void sr_wifi_heal_tick(bool prov_running, bool prov_pending, int *heal_attempt,
 
   *last_heal_ms = ms;
 
-  char ssid[64] = {0}, pass[64] = {0};
+  char ssid[64] = {0};
   if (!sr_nvs_get_str("wifi_ssid", ssid, sizeof(ssid)) || !ssid[0]) {
     ESP_LOGW(TAG, "heal: no saved credentials");
     return;
   }
-  sr_nvs_get_str("wifi_pass", pass, sizeof(pass));
 
   (*heal_attempt)++;
   if (on_mqtt_disconnect) on_mqtt_disconnect();
@@ -303,7 +337,11 @@ void sr_wifi_heal_tick(bool prov_running, bool prov_pending, int *heal_attempt,
     sr_wifi_reconnect();
     return;
   }
-  ESP_LOGI(TAG, "heal begin ssid=%s", ssid);
-  sr_wifi_set_modem_sleep(true);
-  sr_wifi_begin(ssid, pass);
+  ESP_LOGI(TAG, "heal hard reconnect");
+  esp_err_t d = esp_wifi_disconnect();
+  if (d != ESP_OK && d != ESP_ERR_WIFI_NOT_CONNECT) {
+    ESP_LOGW(TAG, "heal hard reconnect: disconnect err=%d", (int)d);
+  }
+  vTaskDelay(pdMS_TO_TICKS(180));
+  sr_wifi_reconnect();
 }
