@@ -83,6 +83,39 @@ Page({
     this.setData({ wifiPwd: e.detail.value })
   },
 
+  async handlePermissionError(err) {
+    const msg = String((err && err.message) || '')
+    if (!/定位权限|scope\.userLocation/i.test(msg)) return false
+    const confirm = await new Promise((resolve) => {
+      wx.showModal({
+        title: '需要定位权限',
+        content: '扫描设备需要定位权限，请授权后重试。',
+        confirmText: '去开启',
+        cancelText: '取消',
+        success: (res) => resolve(!!res.confirm),
+        fail: () => resolve(false)
+      })
+    })
+    if (!confirm) return true
+    await new Promise((resolve) => {
+      wx.openSetting({
+        success: (res) => {
+          const ok = !!(res && res.authSetting && res.authSetting['scope.userLocation'])
+          if (ok) {
+            wx.showToast({ title: '定位权限已开启，请重新搜索', icon: 'none' })
+          } else {
+            wx.showToast({ title: '请开启定位权限后重试', icon: 'none' })
+          }
+        },
+        fail: () => {
+          wx.showToast({ title: '无法打开权限设置，请手动开启定位权限', icon: 'none' })
+        },
+        complete: () => resolve()
+      })
+    })
+    return true
+  },
+
   async refreshWifiList() {
     if (this.data.wifiLoading) return
     if (isIOS()) {
@@ -128,6 +161,7 @@ Page({
         wifiSsid: ssid || this.data.wifiSsid
       })
     } catch (e) {
+      if (await this.handlePermissionError(e)) return
       wx.showToast({ title: e.message || '获取 Wi-Fi 失败', icon: 'none' })
     } finally {
       this.setData({ wifiLoading: false })
@@ -183,6 +217,10 @@ Page({
       })
     } catch (e) {
       if (scanTimer) clearTimeout(scanTimer)
+      if (await this.handlePermissionError(e)) {
+        this.setData({ scanning: false })
+        return
+      }
       wx.showToast({ title: e.message || '搜索失败', icon: 'none' })
       this.setData({ scanning: false })
     }
