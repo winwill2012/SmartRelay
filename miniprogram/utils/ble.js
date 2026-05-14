@@ -25,18 +25,47 @@ function isSmartRelayAdvert(d) {
 }
 
 function openBluetooth() {
+  const openOnce = () =>
+    new Promise((resolve, reject) => {
+      wx.openBluetoothAdapter({
+        success: resolve,
+        fail: (e) => {
+          const msg = e.errMsg || ''
+          if (/already|已打开|已开启/i.test(msg)) {
+            resolve()
+            return
+          }
+          reject(new Error(msg || '请打开手机蓝牙'))
+        }
+      })
+    })
+
+  const ensurePrivacyAuthorize = () =>
+    new Promise((resolve, reject) => {
+      if (typeof wx.requirePrivacyAuthorize !== 'function') {
+        reject(new Error('请先同意隐私授权后重试'))
+        return
+      }
+      wx.requirePrivacyAuthorize({
+        success: () => resolve(),
+        fail: () => reject(new Error('请先同意隐私授权后重试'))
+      })
+    })
+
   return new Promise((resolve, reject) => {
-    wx.openBluetoothAdapter({
-      success: resolve,
-      fail: (e) => {
-        const msg = e.errMsg || ''
-        if (/already|已打开|已开启/i.test(msg)) {
-          resolve()
+    openOnce()
+      .then(resolve)
+      .catch((e) => {
+        const msg = String((e && e.message) || '')
+        if (/privacy api banned|requireprivacyauthorize|隐私/i.test(msg)) {
+          ensurePrivacyAuthorize()
+            .then(() => openOnce())
+            .then(resolve)
+            .catch((e2) => reject(new Error((e2 && e2.message) || '请先同意隐私授权后重试')))
           return
         }
         reject(new Error(msg || '请打开手机蓝牙'))
-      }
-    })
+      })
   })
 }
 
@@ -59,10 +88,17 @@ function authorizeLocationIfNeeded(options = {}) {
       wx.getSetting({
         success: (st) => {
           const auth = (st && st.authSetting) || {}
-          if (auth['scope.userLocation']) {
+          const locState = auth['scope.userLocation']
+          if (locState === true) {
             resolve()
             return
           }
+          // 已被用户明确拒绝：微信不会再弹系统授权框，需要走 openSetting。
+          if (locState === false) {
+            reject(new Error('定位权限已被关闭，请前往设置开启后重试'))
+            return
+          }
+          // 首次未授权（undefined）：触发系统权限申请弹框。
           wx.authorize({
             scope: 'scope.userLocation',
             success: () => resolve(),

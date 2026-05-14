@@ -85,6 +85,18 @@ Page({
 
   async handlePermissionError(err) {
     const msg = String((err && err.message) || '')
+    if (/privacy api banned|requireprivacyauthorize|隐私/i.test(msg)) {
+      await new Promise((resolve) => {
+        wx.showModal({
+          title: '需要隐私授权',
+          content: '请先同意隐私授权后，再进行设备搜索。',
+          showCancel: false,
+          confirmText: '知道了',
+          complete: () => resolve()
+        })
+      })
+      return true
+    }
     if (!/定位权限|scope\.userLocation/i.test(msg)) return false
     const confirm = await new Promise((resolve) => {
       wx.showModal({
@@ -97,23 +109,46 @@ Page({
       })
     })
     if (!confirm) return true
-    await new Promise((resolve) => {
-      wx.openSetting({
-        success: (res) => {
-          const ok = !!(res && res.authSetting && res.authSetting['scope.userLocation'])
-          if (ok) {
-            wx.showToast({ title: '定位权限已开启，请重新搜索', icon: 'none' })
-          } else {
-            wx.showToast({ title: '请开启定位权限后重试', icon: 'none' })
-          }
-        },
-        fail: () => {
-          wx.showToast({ title: '无法打开权限设置，请手动开启定位权限', icon: 'none' })
-        },
-        complete: () => resolve()
+    const openPermissionPage = () =>
+      new Promise((resolve) => {
+        if (typeof wx.openAppAuthorizeSetting === 'function') {
+          wx.openAppAuthorizeSetting({
+            success: () => resolve(),
+            fail: () => {
+              wx.openSetting({ complete: () => resolve() })
+            }
+          })
+          return
+        }
+        wx.openSetting({ complete: () => resolve() })
       })
+    await new Promise((resolve) => {
+      openPermissionPage()
+        .then(() => ble.authorizeLocationIfNeeded())
+        .then(
+          () => wx.showToast({ title: '定位权限已开启，请重新搜索', icon: 'none' }),
+          () => wx.showToast({ title: '请开启定位权限后重试', icon: 'none' })
+        )
+        .finally(() => resolve())
     })
     return true
+  },
+
+  async ensurePrivacyAuthorized() {
+    if (typeof wx.requirePrivacyAuthorize !== 'function') return
+    await new Promise((resolve, reject) => {
+      wx.requirePrivacyAuthorize({
+        success: () => resolve(),
+        fail: (e) => {
+          const msg = String((e && e.errMsg) || '')
+          if (/cancel|deny|拒绝|不同意/i.test(msg)) {
+            reject(new Error('请先同意隐私授权后再重试'))
+            return
+          }
+          reject(new Error(msg || '请先同意隐私授权后再重试'))
+        }
+      })
+    })
   },
 
   async refreshWifiList() {
@@ -133,6 +168,7 @@ Page({
       wifiListEnriched: []
     })
     try {
+      await this.ensurePrivacyAuthorized()
       await ble.authorizeLocationIfNeeded({ forWifi: true })
       const list = (await wifi.getNearbyWifiList()).filter((w) =>
         String(w.SSID || '')
@@ -174,6 +210,7 @@ Page({
     this._autoConnectDone = false
     let scanTimer = null
     try {
+      await this.ensurePrivacyAuthorized()
       await ble.authorizeLocationIfNeeded()
       await ble.openBluetooth()
       const seen = {}
